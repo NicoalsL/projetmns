@@ -1,0 +1,25 @@
+{
+  "name": "eduquizai-back",
+  "version": "0.1.0",
+  "description": "API back-end d'EduQuizAI",
+  "main": "src/serveur.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/serveur.js",
+    "start": "node --env-file-if-exists=.env src/serveur.js",
+    "test": "jest --runInBand",
+    "config:init": "node scripts/initialiser-config.js",
+    "db:init": "node --env-file-if-exists=.env scripts/initialiser-base.js",
+    "test:reel": "node --env-file-if-exists=.env scripts/verifier-cours-reel.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

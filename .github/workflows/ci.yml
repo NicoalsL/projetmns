@@ -1,0 +1,64 @@
+name: Verification du projet
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: eduquizai_test
+          POSTGRES_PASSWORD: mot_de_passe_ci_uniquement
+          POSTGRES_DB: eduquizai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eduquizai_test -d eduquizai_test"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://eduquizai_test:mot_de_passe_ci_uniquement@localhost:5432/eduquizai_test
+      # Secret de test éphémère, exclusivement pour ce job isolé.
+      JWT_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            eduquizai/back/package-lock.json
+            eduquizai/front/package-lock.json
+      - run: npm ci
+        working-directory: eduquizai/back
+      - run: npm test
+        working-directory: eduquizai/back
+      - run: npm run db:init
+        working-directory: eduquizai/back
+      - name: Demarrer API de test
+        working-directory: eduquizai/back
+        run: |
+          node src/serveur.js > /tmp/eduquizai-api.log 2>&1 &
+          for tentative in $(seq 1 30); do
+            if curl --fail --silent http://localhost:3000/pret; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/eduquizai-api.log
+          exit 1
+      - run: npm run test:reel
+        working-directory: eduquizai/back
+      - run: npm ci
+        working-directory: eduquizai/front
+      - run: npm test
+        working-directory: eduquizai/front
+      - run: npm run lint
+        working-directory: eduquizai/front
+      - run: npm run build
+        working-directory: eduquizai/front
+      - run: docker build -t eduquizai-back-ci ./eduquizai/back
+      - run: docker build -t eduquizai-front-ci ./eduquizai/front

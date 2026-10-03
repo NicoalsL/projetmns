@@ -1,0 +1,41 @@
+# Dépendances
+**/node_modules/
+
+# Builds
+**/dist/
+**/build/
+
+# Variables d'environnement (secrets : clé API OpenAI, identifiants BDD...)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Docker
+**/*.pid
+
+# Logs
+**/npm-debug.log*
+**/*.log
+
+# Éditeurs / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Résultats locaux de vérification
+**/coverage/
+audit/npm-cache/
+audit/screenshots/
+
+# Dossier parasite créé par un outil Windows (variable %SystemDrive% non résolue)
+%SystemDrive%/
+
+# Documents d'examen : le CDC est marqué "CONFIDENTIEL NE PAS DIFFUSER" et le
+# dossier professionnel est nominatif -> jamais sur GitHub
+instructction/
+
+# Audit : seuls les rapports .md sont versionnés (pas les logs, scripts,
+# caches ni l'extraction texte du CDC confidentiel)
+audit/*
+!audit/*.md
