@@ -1,0 +1,97 @@
+# Configuration proche de la PRODUCTION (procédure : docs/deploiement.md).
+# Différences avec docker-compose.yml (développement) :
+# - front construit (vite build) et servi par nginx, seul port exposé ;
+# - API lancée sans rechargement automatique, joignable uniquement via nginx ;
+# - aucune base de données exposée, MongoDB protégé par un mot de passe ;
+# - secrets lus dans .env.production (jamais commité), redémarrage automatique.
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait
+
+name: eduquizai-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: eduquizai
+      POSTGRES_PASSWORD: ${POSTGRES_MOT_DE_PASSE:?POSTGRES_MOT_DE_PASSE requis dans .env.production}
+      POSTGRES_DB: eduquizai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eduquizai -d eduquizai"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_UTILISATEUR:?MONGO_UTILISATEUR requis dans .env.production}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_MOT_DE_PASSE:?MONGO_MOT_DE_PASSE requis dans .env.production}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Variables communes à l'initialisation SQL et à l'API (ancre YAML).
+  db-init:
+    build: ./back
+    command: ["npm", "run", "db:init"]
+    environment: &environnement-back
+      NODE_ENV: production
+      # Mots de passe en hexadécimal (voir .env.production.example) : ils
+      # s'insèrent dans ces URL sans caractère à échapper.
+      DATABASE_URL: postgresql://eduquizai:${POSTGRES_MOT_DE_PASSE}@postgres:5432/eduquizai
+      MONGO_URL: mongodb://${MONGO_UTILISATEUR}:${MONGO_MOT_DE_PASSE}@mongo:27017/eduquizai?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requis dans .env.production}
+      IA_FOURNISSEUR: ${IA_FOURNISSEUR:-simulation}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODELE: ${OPENAI_MODELE:-}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODELE: ${OLLAMA_MODELE:-qwen3:8b}
+      ORIGINE_FRONT: ${ORIGINE_FRONT:-http://localhost:8080}
+      # Un proxy de confiance devant l'API : le nginx du service front.
+      TRUST_PROXY: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  back:
+    build: ./back
+    restart: unless-stopped
+    environment: *environnement-back
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Aucun port publié : l'API n'est joignable que par nginx, sur le réseau Docker.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/pret').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      mongo:
+        condition: service_healthy
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    ports:
+      - "${PORT_PUBLIC:-8080}:8080"
+    depends_on:
+      back:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  mongo_data:

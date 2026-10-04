@@ -111,25 +111,55 @@ une base "parce que c'est plus flexible" sans analyse.
   "_id": "ObjectId",
   "id_generation": 17,
   "id_cours": 42,
-  "titre": "Quiz - Chapitre 3",
+  "id_utilisateur": 7,
+  "titre": "Quiz – Chapitre 3",
   "statut": "brouillon",
+  "fournisseur": "openai",
+  "modele": "gpt-4o-mini",
+  "parametres": {
+    "types": ["qcm", "vrai_faux", "ouverte"],
+    "niveau": "college",
+    "difficulte": "moyen",
+    "repartition_demandee": { "qcm": 1, "vrai_faux": 1, "ouverte": 1 }
+  },
   "questions": [
     {
       "type": "qcm",
       "enonce": "Quelle est la capitale de la France ?",
-      "choix": ["Lyon", "Paris", "Marseille"],
-      "bonne_reponse": 1
+      "choix": ["Lyon", "Paris", "Marseille", "Lille"],
+      "bonne_reponse": 1,
+      "explication": "Paris est la capitale depuis le Moyen Âge."
     },
     {
       "type": "vrai_faux",
       "enonce": "La Terre est plate.",
-      "reponse": false,
+      "bonne_reponse": false,
       "explication": "La Terre est un sphéroïde aplati."
+    },
+    {
+      "type": "ouverte",
+      "enonce": "Expliquez le rôle de la chlorophylle.",
+      "bonne_reponse": "Elle capte l'énergie lumineuse utilisée par la photosynthèse.",
+      "explication": ""
     }
   ],
-  "date_creation": "ISODate"
+  "date_creation": "ISODate",
+  "date_modification": "ISODate",
+  "date_validation": null
 }
 ```
+
+Choix d'implémentation (`back/src/utilitaires/questions.js`) :
+- un seul nom de champ, `bonne_reponse`, dont le type dépend de la question : index du
+  bon choix (QCM), booléen (vrai/faux), texte de la réponse attendue (question ouverte) ;
+- `id_utilisateur` est dupliqué dans le document (dénormalisation) pour filtrer chaque
+  requête MongoDB sur le propriétaire sans interroger PostgreSQL ; index composé
+  `{ id_utilisateur: 1, id_cours: 1 }` ;
+- `statut` : `brouillon` à la génération et après toute modification, `valide` après
+  relecture ; seul un quiz validé peut être exporté ;
+- `fournisseur` / `modele` : traçabilité de l'origine du contenu (IA ou simulation) ;
+- `parametres` : choix de l'enseignant à la génération ; `repartition_demandee` permet de
+  signaler un écart si l'IA n'a pas produit le nombre de questions demandé par type.
 
 ### Différé (phase bonus, à créer si la fonctionnalité est activée)
 

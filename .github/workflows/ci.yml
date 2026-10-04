@@ -20,11 +20,19 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U eduquizai_test -d eduquizai_test"
           --health-interval 5s --health-timeout 3s --health-retries 12
+      # MongoDB éphémère pour les quiz, détruit à la fin du job.
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
     env:
       DATABASE_URL: postgresql://eduquizai_test:mot_de_passe_ci_uniquement@localhost:5432/eduquizai_test
       # Secret de test éphémère, exclusivement pour ce job isolé.
       JWT_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       PORT: '3000'
+      MONGO_URL: mongodb://localhost:27017/eduquizai_test
+      # Aucun appel payant à OpenAI dans la CI.
+      IA_FOURNISSEUR: simulation
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,6 +60,22 @@ jobs:
           exit 1
       - run: npm run test:reel
         working-directory: eduquizai/back
+      - run: npm run test:reel:quiz
+        working-directory: eduquizai/back
+      # Scan de sécurité OWASP ZAP (passif) sur l'API démarrée : en-têtes,
+      # divulgation d'informations, mauvaises configurations. -I : les
+      # avertissements ne bloquent pas le pipeline ; le rapport est conservé.
+      - name: Scan OWASP ZAP de l'API
+        run: |
+          mkdir -p zap && chmod 777 zap
+          docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:3000/sante -I -r rapport-zap.html
+      - name: Conserver le rapport ZAP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-zap
+          path: zap/rapport-zap.html
       - run: npm ci
         working-directory: eduquizai/front
       - run: npm test
@@ -62,3 +86,5 @@ jobs:
         working-directory: eduquizai/front
       - run: docker build -t eduquizai-back-ci ./eduquizai/back
       - run: docker build -t eduquizai-front-ci ./eduquizai/front
+      # Image de production du front (build Vite + nginx, voir docs/deploiement.md).
+      - run: docker build -f ./eduquizai/front/Dockerfile.prod -t eduquizai-front-prod-ci ./eduquizai/front

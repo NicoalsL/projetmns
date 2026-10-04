@@ -26,3 +26,10 @@ Format par entrée : date, thème, source, ce que ça change pour le projet.
 ## Démarche(s) de résolution de problème rencontrée(s)
 
 - [Date] — Contexte du bug/incident — Diagnostic — Correction — Vérification
+## 3 octobre 2026 — Cohérence des données et validation concurrente
+
+Source : audit local des services cours/quiz et tests reproductibles décrits dans `audit/AUDIT_COMPLET_SITE_2026-10-03.md`. Le journal de veille détaillé des étapes précédentes se trouve dans `eduquizai/VEILLE.md`.
+
+Une suppression répartie entre PostgreSQL et MongoDB peut laisser des quiz orphelins en cas de panne ou de génération simultanée. Une validation sans numéro de version peut approuver un contenu modifié depuis un autre onglet. Les défauts sont reproduits ; ils ne sont pas encore corrigés. Pistes : nettoyage durable, coordination des écritures et contrôle de révision atomique.
+
+Le contrôle npm signale également 28 entrées hautes dans les dépendances de développement du backend, contre aucune alerte de production et aucune alerte frontend lors de cet audit. Prévoir une mise à jour contrôlée de l’outillage et les tests de non-régression.

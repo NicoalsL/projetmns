@@ -30,6 +30,10 @@ services:
   back:
     build: ./back
     env_file: ./back/.env
+    # Permet au conteneur de joindre Ollama, qui tourne sur la machine hôte
+    # (IA_FOURNISSEUR=ollama). Docker Desktop le fournit déjà ; nécessaire sous Linux.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:3000:3000"
     command: ["node", "--watch", "src/serveur.js"]

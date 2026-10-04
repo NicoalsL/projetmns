@@ -2,7 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
 const coursRoutes = require('./routes/cours.routes');
+const quizRoutes = require('./routes/quiz.routes');
+const compteRoutes = require('./routes/compte.routes');
 const { schemaEstPret } = require('./config/verificationSchema');
+const { mongoEstPret } = require('./config/mongo');
 const gestionErreurs = require('./middlewares/gestionErreurs');
 const creerLimiteur = require('./middlewares/limitationAuth');
 
@@ -13,6 +16,15 @@ const app = express();
 // Ne pas annoncer "Express" dans les en-têtes : inutile d'aider un attaquant
 // à cibler les failles connues d'une technologie.
 app.disable('x-powered-by');
+
+// En production, l'API est derrière nginx : sans ce réglage, toutes les
+// requêtes sembleraient venir de nginx et la limite de tentatives par adresse
+// IP serait commune à tous les utilisateurs. TRUST_PROXY = nombre de proxys
+// de confiance devant l'API ; absent en développement (accès direct), où un
+// client ne doit pas pouvoir choisir son IP avec un faux X-Forwarded-For.
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY));
+}
 
 // Le front et le back tournent sur deux origines différentes : seul le front
 // déclaré a le droit d'appeler l'API depuis un navigateur.
@@ -38,11 +50,11 @@ app.get('/sante', (requete, reponse) => {
   reponse.json({ statut: 'ok' });
 });
 
-// Disponibilité : la base répond ET le schéma est en place. Utilisé par le
-// healthcheck Docker pour ne démarrer le front qu'une fois l'API prête.
+// Disponibilité : PostgreSQL répond avec son schéma en place ET MongoDB répond.
+// Utilisé par le healthcheck Docker pour ne démarrer le front qu'une fois l'API prête.
 app.get('/pret', async (requete, reponse) => {
   try {
-    const pret = await schemaEstPret();
+    const pret = (await schemaEstPret()) && (await mongoEstPret());
     reponse.status(pret ? 200 : 503).json({ statut: pret ? 'pret' : 'indisponible' });
   } catch {
     reponse.status(503).json({ statut: 'indisponible' });
@@ -51,6 +63,8 @@ app.get('/pret', async (requete, reponse) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/cours', coursRoutes);
+app.use('/api/quiz', quizRoutes);
+app.use('/api/compte', compteRoutes);
 
 // Toute route inconnue renvoie du JSON (et non la page HTML par défaut
 // d'Express), pour que le front puisse toujours lire le message d'erreur.

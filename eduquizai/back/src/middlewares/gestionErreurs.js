@@ -7,7 +7,10 @@ function gestionErreurs(erreur, requete, reponse, suite) {
   // Erreurs du client levées par express.json() : JSON mal formé (400) ou
   // corps trop gros (413). Ce ne sont pas des pannes serveur.
   const statut = erreur.status || erreur.statusCode;
-  if (erreur.exposer === true && [401, 404, 409].includes(statut)) {
+
+  // Erreurs métier levées volontairement par les services (exposer: true) :
+  // leur message a été rédigé pour l'utilisateur, on peut le renvoyer.
+  if (erreur.exposer === true && [400, 401, 403, 404, 409, 502].includes(statut)) {
     return reponse.status(statut).json({ erreur: erreur.message });
   }
   if (statut === 400) return reponse.status(400).json({ erreur: 'Requête ou JSON invalide' });

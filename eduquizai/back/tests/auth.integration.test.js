@@ -7,6 +7,15 @@ jest.mock('../src/depots/utilisateur.depot', () => ({
   creer: jest.fn(),
 }));
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
+jest.mock('../src/depots/journalSecurite.depot');
+// MongoDB simulé : /pret l'interroge, mais ces tests portent sur PostgreSQL.
+jest.mock('../src/config/mongo', () => ({ mongoEstPret: jest.fn().mockResolvedValue(true) }));
+// Contrôle de révocation des sessions simulé (testé dans session.test.js) :
+// fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
+jest.mock('../src/services/session.service', () => ({
+  sessionEstValide: async () => true,
+  revoquerSessions: jest.fn(),
+}));
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -19,7 +28,12 @@ const verifierJeton = require('../src/middlewares/authentification');
 let serveur;
 let urlBase;
 
-const utilisateurTest = { nom: 'Alice', email: 'alice@example.com', motDePasse: 'MotDePasse123' };
+const utilisateurTest = {
+  nom: 'Alice',
+  email: 'alice@example.com',
+  motDePasse: 'MotDePasse123',
+  consentementRgpd: true,
+};
 
 beforeAll(async () => {
   process.env.JWT_SECRET = 'b'.repeat(64);
@@ -77,6 +91,16 @@ test('inscription : hache le mot de passe et renvoie un jeton signé', async () 
   expect(resultat.utilisateur).toEqual({ id_utilisateur: 7, nom: 'Alice', email: utilisateurTest.email });
   const contenuJeton = jwt.verify(resultat.jeton, process.env.JWT_SECRET, { algorithms: ['HS256'] });
   expect(contenuJeton.id_utilisateur).toBe(7);
+  // Version de session du compte, comparée à chaque requête (révocation).
+  expect(contenuJeton.version).toBe(0);
+});
+
+test('inscription : refusée sans consentement RGPD explicite, avant tout accès à la base', async () => {
+  for (const consentement of [undefined, false, 'oui', 1]) {
+    const reponse = await envoyerJson('/api/auth/inscription', { ...utilisateurTest, consentementRgpd: consentement });
+    expect(reponse.status).toBe(400);
+  }
+  expect(depot.trouverParEmail).not.toHaveBeenCalled();
 });
 
 test('inscription : un doublon détecté par la base renvoie 409', async () => {
@@ -95,7 +119,8 @@ test('inscription : des données invalides sont refusées avant d\'atteindre la 
   expect(depot.trouverParEmail).not.toHaveBeenCalled();
 });
 
-test('connexion : réussit avec le bon mot de passe, message identique si email inconnu ou mot de passe faux', async () => {
+// Le message est identique pour un email inconnu et un mot de passe faux.
+test('connexion : réussit avec le bon mot de passe, même refus pour tout identifiant faux', async () => {
   const hache = await bcrypt.hash(utilisateurTest.motDePasse, 4);
   depot.trouverParEmail.mockResolvedValue({
     id_utilisateur: 7, nom: 'Alice', email: utilisateurTest.email, role: 'enseignant', mot_de_passe_hache: hache,
@@ -113,6 +138,33 @@ test('connexion : réussit avec le bon mot de passe, message identique si email 
   expect(emailInconnu.status).toBe(401);
   // Même message : on ne révèle pas si l'email existe.
   expect(await emailInconnu.json()).toEqual(messageMauvaisMotDePasse);
+});
+
+test('connexion : chaque tentative est tracée dans le journal de sécurité, réussie ou non', async () => {
+  const journalSecuriteDepot = require('../src/depots/journalSecurite.depot');
+  const hache = await bcrypt.hash(utilisateurTest.motDePasse, 4);
+  depot.trouverParEmail.mockResolvedValue({
+    id_utilisateur: 7, nom: 'Alice', email: utilisateurTest.email, role: 'enseignant', mot_de_passe_hache: hache,
+  });
+
+  await envoyerJson('/api/auth/connexion', { ...utilisateurTest, motDePasse: 'incorrect' });
+  await envoyerJson('/api/auth/connexion', utilisateurTest);
+
+  expect(journalSecuriteDepot.enregistrer).toHaveBeenNthCalledWith(1, 'connexion_echouee', 7);
+  expect(journalSecuriteDepot.enregistrer).toHaveBeenNthCalledWith(2, 'connexion_reussie', 7);
+});
+
+// Sans calcul bcrypt pour un email inconnu, la réponse serait ~100 ms plus
+// rapide : un attaquant pourrait en déduire quels emails ont un compte.
+test('connexion : bcrypt est exécuté même pour un email inconnu (temps de réponse identique)', async () => {
+  depot.trouverParEmail.mockResolvedValue(null);
+  const espionComparaison = jest.spyOn(bcrypt, 'compare');
+
+  const reponse = await envoyerJson('/api/auth/connexion', utilisateurTest);
+
+  expect(reponse.status).toBe(401);
+  expect(espionComparaison).toHaveBeenCalledTimes(1);
+  espionComparaison.mockRestore();
 });
 
 test('JSON mal formé : 400 ; corps trop volumineux : 413', async () => {

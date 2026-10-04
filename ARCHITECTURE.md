@@ -48,19 +48,37 @@ MongoDB. Ce choix n'est pas arbitraire : il couvre directement la compétence RE
 "Développer des composants d'accès aux données SQL et NoSQL", et il correspond à la
 suggestion du CDC ("MongoDB, flexible pour les quiz").
 
-## IA générative : API OpenAI
+## IA générative : LLM local (Ollama) ou API OpenAI, interchangeables
 
-Rapide à intégrer, qualité de génération élevée et documentation abondante : permet de se
-concentrer sur l'intégration et la sécurisation de l'appel plutôt que sur l'hébergement d'un
-modèle. Le service métier qui appelle l'IA est isolé dans une seule fonction (`genererQuiz`
-par exemple), ce qui permettrait de brancher un LLM local (Ollama) sans toucher au reste de
-l'application — point mentionné dans la veille et utile à l'oral pour montrer une
-architecture qui anticipe le changement.
+Le service métier n'appelle que le module `back/src/ia/genererQuiz.js`, par deux fonctions :
+`genererQuiz` (questions d'un quiz, ou une seule question lors d'une régénération) et
+`evaluerReponse` (avis sur une réponse rédigée, mode « Tester le quiz »). Le module délègue
+à un **fournisseur** choisi par la variable `IA_FOURNISSEUR` :
+
+| Fournisseur | Intérêt | Limite |
+|---|---|---|
+| `ollama` (modèle `qwen3:8b`) | Gratuit ; le texte des cours ne quitte pas la machine (argument RGPD fort pour des établissements scolaires) | Plus lent : ≈ 20 à 35 s pour 3 à 4 questions sur la carte graphique de développement |
+| `openai` (`gpt-4o-mini`) | Rapide, qualité élevée | Payant ; texte des cours transmis à un prestataire hors UE |
+| `simulation` | Développement, tests et CI sans IA ni coût | Questions mécaniques, clairement signalées |
+
+Chaque fournisseur expose la même interface (`genererQuestions`, `evaluerReponse`). Les deux
+vrais fournisseurs reçoivent les mêmes schémas JSON (`ia/schemaReponse.js`,
+`ia/schemaCorrection.js`) et leur réponse passe par la même validation
+(`utilitaires/questions.js`) ; chaque citation du cours renvoyée par l'IA est en plus
+vérifiée dans le texte du cours. Passer de l'un à l'autre
+ne modifie ni le service, ni les routes, ni le front : c'est le patron **Stratégie**, et la
+démonstration concrète d'une architecture qui anticipe le changement.
 
 ## Authentification : JWT
 
 Standard de l'industrie, sans état côté serveur (pas de session à stocker), explicitement
 demandé par le CDC ("Authentification JWT / sécurisation API / RGPD").
+
+Limite d'un JWT : il reste valide jusqu'à son expiration, même volé ou après la suppression
+du compte. Compromis retenu : chaque compte porte un numéro `version_jeton`, recopié dans le
+jeton. Le middleware le compare à la base à chaque requête (une lecture par clé primaire) ;
+« Se déconnecter » l'incrémente, ce qui révoque d'un coup tous les jetons du compte, et un
+compte supprimé n'a plus de version. On garde la simplicité du JWT, avec une révocation réelle.
 
 ## Conteneurisation : Docker + docker-compose
 

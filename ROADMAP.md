@@ -1,6 +1,6 @@
 # ROADMAP — EduQuizAI (projet d'examen CDA)
 
-État actualisé : comptes et cours (création, liste, détail, suppression) opérationnels, avec contrôle du propriétaire. Les tests backend, front et PostgreSQL réel sont décrits dans `eduquizai/docs/plan-tests.md`. Les cases historiques ci-dessous qui regroupent des livrables non terminés restent ouvertes. IA/quiz et dossiers finaux restent à développer.
+État réévalué le 3 octobre 2026 à 20 h : environ 80 % global et 90 % fonctionnel. Cohérence SQL/Mongo (A1), validation des versions (A2) et état de livraison (A3) corrigés et vérifiés sur base réelle. Restent : latence > 5 s avec l'IA locale, audit RGAA complet, commits et CI distante, démo en ligne, dossiers et diaporama. Détail : `audit/AVANCEMENT_2026-10-03_20H.md`.
 
 ## Objectif de ce document
 
@@ -23,7 +23,7 @@ en développant tout le code puis en rédigeant tout le dossier à la fin.
 | Back | Node.js + Express | même langage que le front (JS partout) |
 | BDD relationnelle | PostgreSQL | comptes utilisateurs, cours — couvre la compétence "BDD relationnelle" |
 | BDD NoSQL | MongoDB | stockage des quiz générés (structure variable) — couvre la compétence "SQL et NoSQL" |
-| IA | API OpenAI (chat/completions) | rapide à intégrer ; possibilité de brancher un LLM local (Ollama) mentionnée dans la veille |
+| IA | LLM local Ollama (qwen3:8b) par défaut, API OpenAI en option | gratuit et sans transfert des cours à un tiers (RGPD) ; fournisseur interchangeable |
 | Auth | JWT | exigé par le CDC et le REAC (sécurité) |
 | Conteneurs | Docker + docker-compose | exigé pour la compétence DevOps |
 | CI/CD | GitHub Actions | exigé pour la compétence DevOps |
@@ -49,13 +49,13 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 
 ## Points de vigilance transverses (à ne pas oublier en cours de route)
 
-- [ ] **Journal de veille continu** : dès l'étape 0, créer `VEILLE.md` et y ajouter une
+- [x] **Journal de veille continu** : dès l'étape 0, créer `VEILLE.md` et y ajouter une
       entrée à chaque étape (IA en éducation, RGPD, accessibilité, sécurité) — pas un
       unique paragraphe rédigé à la fin.
 - [ ] **Code commenté** au fur et à mesure (UI, API, intégration IA), pas en rattrapage
       final — quelques commentaires clés en anglais valorisent la compétence "communiquer
       en anglais".
-- [ ] **Au moins un exemple réel de démarche de résolution de problème** (un bug rencontré,
+- [x] **Au moins un exemple réel de démarche de résolution de problème** (un bug rencontré,
       diagnostic structuré, correction, vérification) à noter dès qu'il se présente — sert
       à la fois pour le dossier de projet et pour le dossier professionnel.
 - [ ] **Anglais technique** : prévoir un temps de révision vocabulaire pro avant l'examen
@@ -73,7 +73,7 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 - [x] `.gitignore`, `README.md`
 - [x] Environnement Docker local (postgres, mongo, back, front et initialisation SQL)
 - [ ] Outil de suivi de tâches (GitHub Projects ou Trello) avec le backlog ci-dessous
-- [ ] Créer `VEILLE.md` (voir points de vigilance transverses) et y noter une première entrée
+- [x] Créer `VEILLE.md` (voir points de vigilance transverses) et y noter une première entrée
 
 **Dossier**
 - [ ] Présentation de l'entreprise et du service (SchoolUp, fictive — reprendre le CDC)
@@ -112,7 +112,8 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 **Code**
 - [x] MCD Merise (utilisateurs, cours) → `docs/base-de-donnees.md`
 - [x] MLD + script SQL de création (PostgreSQL) → `back/src/config/schema.sql`, appliqué et vérifié dans le conteneur PostgreSQL
-- [ ] Jeu d'essai complet + script de sauvegarde/restauration de la base de test
+- [x] Jeu d'essai complet (`back/scripts/jeu-essai.js`) + scripts de sauvegarde/restauration des deux bases
+      (`scripts/sauvegarder.sh`, `scripts/restaurer.sh`) — restauration vérifiée après un incident simulé
 
 **Dossier**
 - [ ] Reprendre `docs/base-de-donnees.md` (MCD, MLD, schéma Mongo) dans le dossier Word
@@ -124,10 +125,15 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 
 **Code**
 - [x] Endpoints inscription / connexion (JWT) — `back/src/routes/auth.routes.js` et couches associées
-- [x] Écran login/register (React) — `front/src/pages/PageConnexion.jsx`
+- [x] Écran login/register (React) — `front/src/pages/PageConnexion.jsx` (route `/connexion`)
+- [x] Page d'accueil publique — `front/src/pages/PageAccueil.jsx` (route `/`)
+- [x] Charte graphique appliquée (`front/src/index.css`, `docs/charte-graphique.md`) : logo, police
+      Nunito auto-hébergée, en-tête commun ; adaptation lisibilité (fond blanc, casse normale)
+- [x] Audit d'accessibilité (axe-core, clavier, 320 px) et corrections : titres de page, hiérarchie
+      des titres, lien d'évitement, focus — `docs/accessibilite.md`
 - [x] Écran dashboard (liste des cours) — `front/src/pages/PageDashboard.jsx` (chargement réel des cours du compte connecté)
 - [x] Écran "créer un cours" (formulaire texte) — `front/src/pages/PageCreationCours.jsx`
-- [ ] Diagramme de séquence du cas d'utilisation le plus significatif (à faire : inscription ou génération de quiz)
+- [x] Diagramme de séquence du cas d'utilisation le plus significatif (génération de quiz) — `docs/diagrammes.md`
 - [x] **Test de bout en bout avec Docker lancé** : les 4 conteneurs tournent, schéma SQL appliqué, inscription/connexion/doublon/mot de passe erroné testés contre une vraie base PostgreSQL — tous les cas passent, mot de passe confirmé haché en base
 
 **Dossier**
@@ -139,11 +145,21 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 ## Étape 5 — Composants métier + intégration IA + accès données
 
 **Code**
-- [ ] Service métier `generateQuiz` (appel API OpenAI)
-- [ ] Stockage des quiz générés dans MongoDB (NoSQL)
-- [x] Cours PostgreSQL : création, liste, consultation et suppression avec contrôle du propriétaire (édition hors périmètre de cette étape)
-- [ ] Endpoints REST reliant front/back/IA
-- [ ] Validation systématique des entrées, gestion des erreurs et exceptions
+- [x] Module IA `ia/genererQuiz.js` : fournisseur OpenAI (structured outputs, délai max 30 s) et
+      fournisseur de simulation sans IA (`IA_FOURNISSEUR`) ; réponse de l'IA validée par
+      `utilitaires/questions.js` — vraie clé OpenAI encore à tester
+- [x] Stockage des quiz générés dans MongoDB (NoSQL) — `depots/quiz.depot.js`, filtrage par propriétaire
+- [x] Journal `generation_ia` (statut, durée, nombre de questions) — `depots/generationIa.depot.js`
+- [x] Cours PostgreSQL : création, liste, consultation et suppression avec contrôle du propriétaire
+      (édition hors périmètre de cette étape) ; suppression en cascade des quiz MongoDB
+- [x] Endpoints REST quiz : génération, liste par cours, consultation, modification, validation,
+      export JSON, suppression ; 10 générations par heure et par enseignant
+- [x] Validation systématique des entrées, gestion des erreurs et exceptions (erreurs IA -> 502 générique)
+- [x] Écrans : section quiz sur la page du cours, page quiz (relecture, édition, validation, export)
+- [x] Modification d'un cours, recherche et tri de « Mes cours »
+- [x] Export CSV et PDF, mode « Tester le quiz », régénération d'une question, avis de l'IA sur une
+      réponse ouverte, citation du cours vérifiée pour chaque question
+- [x] Journal de sécurité (`journal_securite`) des actions sensibles
 
 **Dossier**
 - [ ] Extraits de code : composants métier, accès données SQL, accès données NoSQL
@@ -157,9 +173,13 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 - [x] Plan de tests comptes/cours (unitaires, intégration, sécurité) — `eduquizai/docs/plan-tests.md`
 - [x] Tests Jest : authentification, validation, cours et permissions
 - [x] Tests des sessions front et parcours API avec PostgreSQL réel
-- [ ] Tests du service de génération de quiz
-- [ ] Tests de sécurité basiques (tentative d'injection SQL, tentative XSS) via Postman ou OWASP ZAP
-- [ ] Jeu d'essai complet documenté sur la génération de quiz (donnée en entrée → attendu → obtenu)
+- [x] Tests du module IA (OpenAI simulé : succès, délai, refus, JSON invalide), des règles de questions et
+      des routes quiz (propriété, journal, brouillon -> validé, export, limitation)
+- [x] Parcours quiz sur la vraie API + PostgreSQL + MongoDB — `scripts/verifier-quiz-reel.js` (24 vérifications)
+- [x] Tests de sécurité : injection SQL et XSS (Jest + scripts réels), scan OWASP ZAP de la production
+      (0 échec, 64 réussis) et dans la CI
+- [x] Tests de composants React (Vitest + Testing Library) et parcours navigateur complet sur la production
+- [x] Jeu d'essai documenté sur la génération de quiz (entrée → attendu → obtenu) — `eduquizai/docs/plan-tests.md` ; mesure < 5 s à refaire avec une vraie clé OpenAI
 
 **Dossier**
 - [ ] Présentation du plan de tests
@@ -170,11 +190,11 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 ## Étape 7 — Déploiement & DevOps
 
 **Code**
-- [ ] Dockerfiles front/back finalisés
-- [ ] `docker-compose.yml` complet (proche prod)
+- [x] Dockerfiles front/back finalisés (`front/Dockerfile.prod` : build + nginx sans root)
+- [x] `docker-compose.prod.yml` proche de la production (CSP, secrets, MongoDB authentifié)
 - [x] Fichier GitHub Actions : tests, PostgreSQL de test, lint, build et images Docker
 - [ ] Preuve d’exécution du pipeline sur GitHub (aucun push effectué)
-- [ ] Script et documentation de déploiement
+- [x] Script et documentation de déploiement (`scripts/deployer.sh`, `docs/deploiement.md`), vérifiés en local
 
 **Dossier**
 - [ ] Procédure de déploiement rédigée
@@ -186,9 +206,9 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 
 - [ ] Finaliser `VEILLE.md` (déjà alimenté en continu depuis l'étape 0) et en extraire la
       synthèse pour la section "veille" du dossier
-- [ ] Compléter la documentation utilisateur (guide comptes/cours déjà rédigé ; reste générer un quiz,
+- [x] Compléter la documentation utilisateur (guide comptes/cours déjà rédigé ; reste générer un quiz,
       l'éditer, l'exporter)
-- [ ] Vérifier que la page/le bloc "mentions légales RGPD" existe et est référencé dans le dossier
+- [ ] Vérifier que la page/le bloc "mentions légales RGPD" existe (fait : `/confidentialite`) et est référencé dans le dossier
 - [ ] Relire que le code est bien commenté (UI, API, intégration IA) avant les captures/extraits
 - [ ] Compiler et relire le dossier de projet complet (40-60 pages + annexes 40 pages max —
       à surveiller dès l'étape 5, pas seulement ici)
@@ -204,3 +224,14 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 - Éditeur WYSIWYG riche (Markdown simple suffit)
 - Types de questions avancés au-delà de QCM + vrai/faux (questions ouvertes en bonus)
 - Audit RGAA complet (mentionner la démarche dans le dossier suffit pour le MVP)
+## Corrections prioritaires issues du dernier audit
+
+- [x] Coordonner génération et suppression SQL/Mongo ; nettoyage durable et test de panne (A1).
+- [x] Contrôler la version du quiz lors de la modification, régénération et validation (A2).
+- [x] Distinguer succès de l’appel IA et persistance du quiz dans le journal (A3).
+- [ ] Rejouer des mesures de latence : essai actuel de 17,015 s pour 3 questions, cible < 5 s.
+- [x] Résoudre les alertes npm sur les dépendances de développement, puis tester.
+- [ ] Compléter la preuve de conformité RGAA demandée au CDC (ne pas la confondre avec axe seul).
+- [ ] Versionner les évolutions locales après revue ; CI distante et publication sous accord explicite.
+
+Ces tâches complètent les cases fonctionnelles déjà cochées : un parcours nominal réussi ne démontre pas sa fiabilité en concurrence ou en panne.

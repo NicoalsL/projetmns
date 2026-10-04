@@ -7,10 +7,15 @@ const REGEX_SECRET_JWT = /^[a-f0-9]{64,}$/i;
 // Reçoit env en paramètre pour pouvoir être testée sans toucher process.env.
 function verifierEnvironnement(env = process.env) {
   if (!REGEX_SECRET_JWT.test(env.JWT_SECRET || '')) {
-    throw new Error('JWT_SECRET doit être un secret aléatoire hexadécimal de 64 caractères minimum. Exécuter npm run config:init.');
+    throw new Error(
+      'JWT_SECRET doit être un secret aléatoire hexadécimal de 64 caractères minimum. '
+      + 'Exécuter npm run config:init.',
+    );
   }
 
   verifierUrlBase(env.DATABASE_URL);
+  verifierUrlMongo(env.MONGO_URL);
+  verifierFournisseurIa(env);
 
   const port = Number(env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -19,6 +24,34 @@ function verifierEnvironnement(env = process.env) {
 
   if (env.ORIGINE_FRONT) {
     verifierOrigineFront(env.ORIGINE_FRONT);
+  }
+
+  // Nombre de proxys de confiance (voir app.js) : un petit entier, sinon un
+  // client pourrait faire croire à n'importe quelle adresse IP.
+  if (env.TRUST_PROXY !== undefined && !/^[1-5]$/.test(env.TRUST_PROXY)) {
+    throw new Error('TRUST_PROXY doit être un entier entre 1 et 5 (nombre de proxys devant l\'API).');
+  }
+}
+
+function verifierUrlMongo(valeur) {
+  if (typeof valeur !== 'string' || !/^mongodb(\+srv)?:\/\/.+/.test(valeur)) {
+    throw new Error('MONGO_URL est requise et doit commencer par mongodb://');
+  }
+}
+
+// "simulation" (par défaut) génère des quiz sans IA, pour développer sans clé.
+// "openai" exige une clé : sans elle, chaque génération échouerait.
+// "ollama" utilise un modèle local ; son URL, si elle est fournie, doit être valide.
+function verifierFournisseurIa(env) {
+  const fournisseur = env.IA_FOURNISSEUR || 'simulation';
+  if (!['simulation', 'openai', 'ollama'].includes(fournisseur)) {
+    throw new Error('IA_FOURNISSEUR doit valoir simulation, openai ou ollama.');
+  }
+  if (fournisseur === 'openai' && !env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY est requise quand IA_FOURNISSEUR=openai.');
+  }
+  if (fournisseur === 'ollama' && env.OLLAMA_URL && !/^https?:\/\/[^/]+/.test(env.OLLAMA_URL)) {
+    throw new Error('OLLAMA_URL doit être une URL HTTP(S), par exemple http://host.docker.internal:11434.');
   }
 }
 

@@ -8,6 +8,7 @@ const gestionErreurs = require('../src/middlewares/gestionErreurs');
 const configurationValide = {
   JWT_SECRET: 'a'.repeat(64),
   DATABASE_URL: 'postgresql://user:password@localhost/base',
+  MONGO_URL: 'mongodb://localhost:27017/base',
 };
 
 // Faux objet "reponse" Express qui enregistre les appels.
@@ -20,6 +21,22 @@ describe('verifierEnvironnement', () => {
     expect(() => verifierEnvironnement(configurationValide)).not.toThrow();
   });
 
+  test('accepte un nombre de proxys de confiance raisonnable (production derrière nginx)', () => {
+    expect(() => verifierEnvironnement({ ...configurationValide, TRUST_PROXY: '1' })).not.toThrow();
+  });
+
+  test('accepte le fournisseur OpenAI quand une clé est fournie', () => {
+    const configurationOpenai = { ...configurationValide, IA_FOURNISSEUR: 'openai', OPENAI_API_KEY: 'sk-test' };
+    expect(() => verifierEnvironnement(configurationOpenai)).not.toThrow();
+  });
+
+  test('accepte le fournisseur Ollama, avec ou sans URL explicite', () => {
+    const sansUrl = { ...configurationValide, IA_FOURNISSEUR: 'ollama' };
+    const avecUrl = { ...sansUrl, OLLAMA_URL: 'http://host.docker.internal:11434' };
+    expect(() => verifierEnvironnement(sansUrl)).not.toThrow();
+    expect(() => verifierEnvironnement(avecUrl)).not.toThrow();
+  });
+
   test.each([
     ['secret JWT vide', { JWT_SECRET: '' }],
     ['secret JWT faible', { JWT_SECRET: 'changeme' }],
@@ -28,6 +45,13 @@ describe('verifierEnvironnement', () => {
     ['port non numérique', { PORT: 'abc' }],
     ['port hors limites', { PORT: '65536' }],
     ['origine front avec chemin', { ORIGINE_FRONT: 'https://example.com/path' }],
+    ['URL MongoDB absente', { MONGO_URL: '' }],
+    ['URL MongoDB d\'un autre protocole', { MONGO_URL: 'https://example.com' }],
+    ['fournisseur IA inconnu', { IA_FOURNISSEUR: 'autre' }],
+    ['fournisseur OpenAI sans clé', { IA_FOURNISSEUR: 'openai', OPENAI_API_KEY: '' }],
+    ['URL Ollama invalide', { IA_FOURNISSEUR: 'ollama', OLLAMA_URL: 'ollama:11434' }],
+    ['nombre de proxys non numérique', { TRUST_PROXY: 'true' }],
+    ['nombre de proxys démesuré', { TRUST_PROXY: '99' }],
   ])('refuse : %s', (_description, modification) => {
     expect(() => verifierEnvironnement({ ...configurationValide, ...modification })).toThrow();
   });

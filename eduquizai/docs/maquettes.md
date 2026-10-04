@@ -1,10 +1,32 @@
 # Maquettes basse fidélité — EduQuizAI
 
-Wireframes texte des 4 écrans essentiels du MVP (voir `FONCTIONNALITES.md` à la racine
+Wireframes texte des écrans essentiels du MVP (voir `FONCTIONNALITES.md` à la racine
 pour la liste complète). Le détail de l'enchaînement entre ces écrans est dans
 `diagrammes.md`.
 
-## Écran 1 — Connexion / Inscription
+## Écran 0 — Accueil public (`/`)
+
+Présente le service avant la connexion. Un enseignant déjà connecté y voit un
+bouton « Mes cours » à la place des boutons de connexion.
+
+```
++--------------------------------------------------+
+| [Logo EduQuizAI]   [Se connecter] [Créer un compte]|
++--------------------------------------------------+
+|              ( Assisté par IA )                    |
+|   Transformez vos cours en quiz,                   |
+|   relus et validés par vous                        |
+|   [ Créer un compte ]   [ J'ai déjà un compte ]    |
+|                                                    |
+|  Comment ça marche ?                               |
+|  [1 Déposez] [2 Générez] [3 Relisez et validez]    |
+|                                                    |
+|  L'IA propose, vous décidez | (exemple de question)|
+|  Vos données restent les vôtres (engagements RGPD) |
++--------------------------------------------------+
+```
+
+## Écran 1 — Connexion / Inscription (`/connexion`)
 
 ```
 +--------------------------------------------------+
