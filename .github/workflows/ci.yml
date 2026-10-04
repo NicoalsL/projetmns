@@ -6,7 +6,9 @@ permissions:
   contents: read
 jobs:
   verification:
-    runs-on: ubuntu-latest
+    # Version d'Ubuntu fixée (et non ubuntu-latest, qui change de version sans
+    # prévenir) : la CI reste reproductible, notamment avant l'examen.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -34,8 +36,9 @@ jobs:
       # Aucun appel payant à OpenAI dans la CI.
       IA_FOURNISSEUR: simulation
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Actions officielles en v7 (Node 24) : les v4 visaient Node 20, abandonné par GitHub.
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -72,7 +75,7 @@ jobs:
             zap-baseline.py -t http://localhost:3000/sante -I -r rapport-zap.html
       - name: Conserver le rapport ZAP
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rapport-zap
           path: zap/rapport-zap.html

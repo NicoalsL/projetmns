@@ -1,6 +1,10 @@
 # ROADMAP — EduQuizAI (projet d'examen CDA)
 
-État réévalué le 3 octobre 2026 à 20 h : environ 80 % global et 90 % fonctionnel. Cohérence SQL/Mongo (A1), validation des versions (A2) et état de livraison (A3) corrigés et vérifiés sur base réelle. Restent : latence > 5 s avec l'IA locale, audit RGAA complet, commits et CI distante, démo en ligne, dossiers et diaporama. Détail : `audit/AVANCEMENT_2026-10-03_20H.md`.
+Estimation du 3 octobre 2026 à 20 h : environ 80 % global et 90 % fonctionnel (non recalculée ici).
+Cohérence SQL/Mongo (A1), validation des versions (A2) et état de livraison (A3) corrigés et vérifiés sur base réelle.
+Le 4 octobre, le commit `9c324d1` est présent et la capture fournie confirme une CI GitHub réussie sur ce commit.
+Restent : latence > 5 s avec l'IA locale, audit RGAA complet, démo en ligne, dossiers et diaporama.
+Détail initial : `audit/AVANCEMENT_2026-10-03_20H.md` ; preuve CI : `audit/VALIDATION_CI_2026-10-04.md`.
 
 ## Objectif de ce document
 
@@ -193,7 +197,7 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 - [x] Dockerfiles front/back finalisés (`front/Dockerfile.prod` : build + nginx sans root)
 - [x] `docker-compose.prod.yml` proche de la production (CSP, secrets, MongoDB authentifié)
 - [x] Fichier GitHub Actions : tests, PostgreSQL de test, lint, build et images Docker
-- [ ] Preuve d’exécution du pipeline sur GitHub (aucun push effectué)
+- [x] Preuve d’exécution du pipeline sur GitHub : capture fournie le 4 octobre, succès sur `9c324d1`.
 - [x] Script et documentation de déploiement (`scripts/deployer.sh`, `docs/deploiement.md`), vérifiés en local
 
 **Dossier**
@@ -232,6 +236,7 @@ les points de vigilance ci-dessous, à traiter en continu et pas uniquement à l
 - [ ] Rejouer des mesures de latence : essai actuel de 17,015 s pour 3 questions, cible < 5 s.
 - [x] Résoudre les alertes npm sur les dépendances de développement, puis tester.
 - [ ] Compléter la preuve de conformité RGAA demandée au CDC (ne pas la confondre avec axe seul).
-- [ ] Versionner les évolutions locales après revue ; CI distante et publication sous accord explicite.
+- [x] Évolutions versionnées dans `9c324d1` ; succès de la CI distante attesté par la capture fournie.
+- [ ] Publier une démo en ligne, sous accord explicite.
 
 Ces tâches complètent les cases fonctionnelles déjà cochées : un parcours nominal réussi ne démontre pas sa fiabilité en concurrence ou en panne.

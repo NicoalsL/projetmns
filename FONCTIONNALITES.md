@@ -99,7 +99,8 @@ Regroupées par domaine, comme dans le CDC.
 - [x] Tests du service de génération de quiz
 - [x] Tests SQL/XSS documentés sur les cours — `eduquizai/docs/plan-tests.md`
 - [x] Dockerisation front + back + bases de données
-- [x] Fichier de pipeline GitHub Actions (lint, tests, build) ; exécution distante encore à vérifier
+- [x] Pipeline GitHub Actions (lint, tests, build) ; succès sur `9c324d1` visible dans la capture fournie
+      le 4 octobre 2026 — `audit/VALIDATION_CI_2026-10-04.md`.
 
 **Additionnelles**
 - [x] Scan de sécurité automatisé (OWASP ZAP) intégré à la CI — scan local de la production : 0 échec, 64 réussis

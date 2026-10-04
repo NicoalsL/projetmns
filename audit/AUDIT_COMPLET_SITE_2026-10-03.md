@@ -18,7 +18,7 @@ Documents relus directement dans `instructction/` :
 - `REAC_CDA_V04_02072024 (1) (1).pdf`, 50 pages : activités et compétences du titre.
 - `REV2_CDA_V04_02072024 (2) (1).pdf`, 42 pages : modalités d’évaluation ; dossier et diaporama pages 4–7.
 - `dossier projet cda (1) (1).docx` : trame de dossier projet, environ 470 mots extraits, essentiellement des rubriques non renseignées.
-- `[CD2IA] Nicolas LEBON - dossier_professionnel_CDA (2) (1).docx` : trame professionnelle, champs de saisie et exemples de pratique non renseignés.
+- Trame du dossier professionnel du candidat (fichier .docx nominatif, non versionné) : trame professionnelle, champs de saisie et exemples de pratique non renseignés.
 
 Les originaux n’ont pas été modifiés ni envoyés à un service externe. Leurs extractions techniques restent dans `audit/`, ignorées par Git. Le RE demande notamment un dossier de 40 à 60 pages hors garde, sommaire et annexes ; annexes limitées à 40 pages. Le plan précis dépend du contexte formation/entreprise : ne pas imposer automatiquement le plan entreprise à un projet de formation.
 
