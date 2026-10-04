@@ -10,16 +10,18 @@
     "test": "jest --runInBand",
     "config:init": "node scripts/initialiser-config.js",
     "db:init": "node --env-file-if-exists=.env scripts/initialiser-base.js",
-    "test:reel": "node --env-file-if-exists=.env scripts/verifier-cours-reel.js"
+    "test:reel": "node --env-file-if-exists=.env scripts/verifier-cours-reel.js",
+    "test:reel:quiz": "node --env-file-if-exists=.env scripts/verifier-quiz-reel.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
+    "mongodb": "^6.21.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^30.5.2"
   }
 }

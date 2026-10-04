@@ -1,31 +1,2415 @@
-* { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; color: #202124; background: #fff; line-height: 1.5; }
-button, input, textarea { font: inherit; }
-button { padding: .5rem .8rem; cursor: pointer; }
-button:disabled { cursor: not-allowed; }
-input, textarea { display: block; width: 100%; padding: .5rem; margin: .25rem 0 1rem; border: 1px solid #666; border-radius: 4px; }
-label { display: block; font-weight: 600; }
-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-legend { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
-a { color: #174ea6; }
-:focus-visible { outline: 3px solid #174ea6; outline-offset: 3px; }
-.connexion { display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 1rem; }
-.carte { width: 100%; max-width: 380px; padding: 1.5rem; border: 1px solid #ccc; border-radius: 8px; }
-.carte h1 { text-align: center; font-size: 1.5rem; }
-.onglets { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
-.onglets button { flex: 1; }
-.onglets [aria-pressed="true"] { font-weight: 700; text-decoration: underline; }
-.erreur { color: #a31919; overflow-wrap: anywhere; }
-.entete { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #ccc; }
-.contenu { padding: 1rem; }
-.formulaire-cours { max-width: 640px; }
-.table-conteneur { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid #777; padding: .5rem; text-align: left; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* ==========================================================================
+   EduQuizAI (SchoolUp) : charte graphique « ludique », fichier index.css
+   --------------------------------------------------------------------------
+   - Style « jeu » : couleurs vives, formes très arrondies, boutons en relief
+     qui s'enfoncent au clic, ombres pleines sans flou.
+   - Une seule police web (Nunito, licence OFL) en 2 graisses : 400 et 800,
+     auto-hébergée (aucun appel à un service tiers, conforme RGPD).
+   - Tous les ratios cités sont calculés selon WCAG 2.1 (luminance relative),
+     tronqués à 2 décimales, jamais arrondis vers le haut.
+   - Mobile d'abord : aucun défilement horizontal de la page dès 320 px.
+   ========================================================================== */
 
-.detail-cours { max-width: 960px; margin: 0 auto; }
-.texte-cours { white-space: pre-wrap; overflow-wrap: anywhere; margin: 1.5rem 0; }
-.confirmation { margin-top: 1rem; padding: 1rem; border: 1px solid #a31919; border-radius: 4px; }
-.actions { display: flex; flex-wrap: wrap; gap: .75rem; }
-h1, h2, td, a { overflow-wrap: anywhere; }
+
+/* --------------------------------------------------------------------------
+   0. Police : Nunito, sous-ensemble latin (16,3 Ko + 16,5 Ko en woff2).
+   Fichiers à copier dans public/fonts/ depuis le paquet npm @fontsource/nunito.
+   font-display: swap : le texte s'affiche tout de suite avec la police de
+   repli, puis bascule sur Nunito (pas de texte invisible).
+   -------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-800-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
+/* --------------------------------------------------------------------------
+   1. Jetons de conception (custom properties)
+   -------------------------------------------------------------------------- */
+
+/* Jetons indépendants du thème */
+:root {
+  --police: "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Noto Sans", sans-serif;
+  --police-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  /* Échelle en rem : elle suit la taille de police choisie par l'utilisateur.
+     Nunito a un œil un peu petit : le texte courant passe à 17 px. */
+  --taille-h1: 1.75rem;      /* 28 px sur mobile, 36 px dès 40rem */
+  --taille-h2: 1.375rem;     /* 22 px sur mobile, 24 px dès 40rem */
+  --taille-h3: 1.25rem;      /* 20 px */
+  --taille-texte: 1.0625rem; /* 17 px */
+  --taille-petit: 0.9375rem; /* 15 px : taille minimale autorisée */
+
+  /* Deux graisses seulement : les deux fichiers de police chargés */
+  --graisse-normale: 400;
+  --graisse-forte: 800;
+
+  --interligne: 1.6;         /* confortable, compatible WCAG 1.4.12 */
+  --interligne-titre: 1.2;
+  --mesure: 68ch;            /* longueur de ligne maximale pour lire un cours */
+
+  /* Espacements : échelle 4 / 8 / 12 / 16 / 24 / 32 / 48 px (en rem) */
+  --espace-1: 0.25rem;
+  --espace-2: 0.5rem;
+  --espace-3: 0.75rem;
+  --espace-4: 1rem;
+  --espace-5: 1.5rem;
+  --espace-6: 2rem;
+  --espace-7: 3rem;
+
+  /* Rayons : très arrondis, c'est la signature « jeu » */
+  --rayon-petit: 8px;        /* badges de type, touches A/B/C, code */
+  --rayon: 12px;             /* champs, choix, messages */
+  --rayon-bouton: 16px;      /* boutons */
+  --rayon-grand: 16px;       /* cartes */
+  --rayon-pilule: 999px;     /* badges de statut */
+
+  /* Relief : ombre pleine sous les éléments CLIQUABLES uniquement.
+     Règle d'affordance : ce qui a du relief se clique, ce qui est plat
+     se lit. Sans flou, donc très peu coûteux à afficher. */
+  --relief: 4px;
+  --relief-petit: 3px;
+
+  /* Dimensions */
+  --largeur-max: 72rem;      /* 1152 px */
+  --hauteur-cible: 3rem;     /* 48 px : cible tactile confortable */
+  --contour-focus: 3px solid var(--focus);
+  --duree: 120ms;
+
+  /* Icônes CSS en SVG (quelques centaines d'octets, aucune requête réseau).
+     Elles sont décoratives : le sens est toujours porté par un texte. */
+  --icone-coche: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3 3 7-7'/%3E%3C/svg%3E");
+  --icone-crayon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'%3E%3Cpath d='M10.5 2.5l3 3L6 13H3v-3z'/%3E%3C/svg%3E");
+  --icone-alerte: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2l6.5 11.5h-13z'/%3E%3Cpath d='M8 6.5v3M8 11.5v.01'/%3E%3C/svg%3E");
+  --icone-erreur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.5'/%3E%3Cpath d='M5.5 5.5l5 5M10.5 5.5l-5 5'/%3E%3C/svg%3E");
+  --icone-succes: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='8' r='6.5'/%3E%3Cpath d='M5 8.2l2 2 4-4'/%3E%3C/svg%3E");
+  --icone-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.5'/%3E%3Cpath d='M8 7.5v3.5M8 5v.01'/%3E%3C/svg%3E");
+  --icone-etincelle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.5q.9 4.6 5.5 6.5-4.6 1.9-5.5 6.5-.9-4.6-5.5-6.5 4.6-1.9 5.5-6.5z'/%3E%3C/svg%3E");
+  --icone-poubelle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5h11M6.5 4.5V2.8h3v1.7M4 4.5l.8 9h6.4l.8-9M6.8 7v4M9.2 7v4'/%3E%3C/svg%3E");
+}
+
+/* Titres plus grands dès que la place le permet */
+@media (min-width: 40rem) {
+  :root {
+    --taille-h1: 2.25rem;    /* 36 px */
+    --taille-h2: 1.5rem;     /* 24 px */
+  }
+}
+
+/* Couleurs, thème clair (par défaut).
+   [data-theme="clair"] permet de forcer ce thème sur <html> ou sur un bloc. */
+:root,
+[data-theme="clair"] {
+  color-scheme: light;
+
+  /* Marque : violet électrique + jaune soleil */
+  --principale: #7048E8;            /* fond des boutons : texte blanc 5,55:1 */
+  --principale-survol: #5A2FD6;     /* texte blanc 7,46:1 */
+  --principale-relief: #4A22B8;     /* relief des boutons (décoratif) */
+  --principale-claire: #EEE8FF;     /* onglet actif, choix coché, sélection */
+  --principale-texte: #5F33DB;      /* liens et texte violet : 7,03:1 sur blanc */
+  --principale-reflet: #A08AF5;     /* reflet de la barre de progression (décoratif) */
+  --texte-sur-principale: #FFFFFF;
+  --jaune: #FFC83D;                 /* accent IA : toujours avec l'encre dessus (11,35:1) */
+  --jaune-relief: #D9A21B;          /* décoratif */
+  --jaune-clair: #FFF4CC;           /* explications : texte 15,93:1 */
+  --encre: #1B1530;                 /* texte posé sur le jaune, dans les deux thèmes */
+
+  /* Neutres teintés de violet */
+  --fond: #F7F5FD;
+  --surface: #FFFFFF;
+  --surface-2: #F0EDFA;
+  --bordure: #8A82A6;               /* champs : 3,60:1 sur blanc, 3,33:1 sur le fond */
+  --bordure-legere: #E4DFF3;        /* décoratif uniquement (1,30:1) : jamais pour un champ */
+  --bordure-relief: #CFC7E6;        /* relief des boutons blancs (décoratif) */
+  --texte: #1B1530;                 /* 17,55:1 sur blanc */
+  --texte-secondaire: #5C5675;      /* 6,90:1 sur blanc, 5,98:1 sur surface-2 */
+
+  /* Sémantiques : toujours accompagnées d'une icône ET d'un libellé */
+  --succes: #0E7A4D;                /* 4,76:1 sur son fond, 5,37:1 sur blanc */
+  --succes-fond: #DFF7EA;
+  --succes-bordure: #178F55;        /* 4,12:1 sur blanc */
+  --avertissement: #8F4D00;         /* 5,78:1 sur son fond */
+  --avertissement-fond: #FFF0D6;
+  --avertissement-bordure: #B86A00; /* 4,11:1 sur blanc, 3,66:1 sur son fond */
+  --erreur: #C42340;                /* 4,94:1 sur son fond, 5,73:1 sur blanc */
+  --erreur-fond: #FFE9EC;
+  --danger: #C42340;                /* bouton danger : texte blanc 5,73:1 */
+  --danger-survol: #A31A33;         /* texte blanc 7,62:1 */
+  --danger-relief: #8A1529;
+  --info: #1A62C9;                  /* 5,02:1 sur son fond */
+  --info-fond: #E6F0FF;
+  --desactive-fond: #E9E6F2;
+  --desactive-texte: #625D78;       /* 5,08:1 : exempté par WCAG, mais gardé lisible */
+  --focus: #1B1530;                 /* encre : 17,55:1 sur blanc */
+
+  /* Types de question (le libellé reste toujours affiché) */
+  --qcm: #4A22B8;            --qcm-fond: #EEE8FF;      /* 7,96:1 */
+  --vrai-faux: #1A4F9E;      --vrai-faux-fond: #E6F0FF; /* 6,87:1 */
+  --ouverte: #A3165F;        --ouverte-fond: #FFE6F3;   /* 6,29:1 */
+}
+
+/* Thème sombre : suit le réglage du système, sauf si l'utilisateur force
+   le thème clair. Réservé à l'écran (une impression reste toujours claire). */
+@media screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]) {
+    color-scheme: dark;
+    --principale: #7048E8;            /* même violet : 3,09:1 sur la surface sombre */
+    --principale-survol: #7652EE;     /* texte blanc 4,98:1 */
+    --principale-relief: #3A1C93;
+    --principale-claire: #2D2350;
+    --principale-texte: #B8A4FF;      /* 8,00:1 sur la surface */
+    --principale-reflet: #9C82FF;
+    --texte-sur-principale: #FFFFFF;
+    --jaune: #FFC83D;
+    --jaune-relief: #B8860B;
+    --jaune-clair: #3A3115;
+    --encre: #1B1530;
+    --fond: #120F1D;
+    --surface: #1C1830;
+    --surface-2: #262140;
+    --bordure: #8F87AE;               /* 5,10:1 sur la surface */
+    --bordure-legere: #352E52;
+    --bordure-relief: #4A4170;
+    --texte: #F1EEFA;                 /* 15,00:1 sur la surface */
+    --texte-secondaire: #B7B0CF;      /* 8,28:1 sur la surface */
+    --succes: #5FE0A0;
+    --succes-fond: #123324;
+    --succes-bordure: #3CB97C;
+    --avertissement: #FFC266;
+    --avertissement-fond: #3A2A0E;
+    --avertissement-bordure: #D99A3A;
+    --erreur: #FF8A9A;
+    --erreur-fond: #3D1820;
+    --danger: #C42340;
+    --danger-survol: #A31A33;
+    --danger-relief: #6B0F20;
+    --info: #8CB8FF;
+    --info-fond: #16264A;
+    --desactive-fond: #2E2945;
+    --desactive-texte: #B0A9C8;
+    --focus: #FFC83D;                 /* jaune : 11,10:1 sur la surface */
+    --qcm: #CDBEFF;            --qcm-fond: #2D2350;
+    --vrai-faux: #A9CBFF;      --vrai-faux-fond: #16264A;
+    --ouverte: #FFA8D6;        --ouverte-fond: #3D1830;
+  }
+}
+
+/* Thème sombre forcé (bouton de bascule éventuel : data-theme="sombre" sur <html>) */
+@media screen {
+  [data-theme="sombre"] {
+    color-scheme: dark;
+    --principale: #7048E8;
+    --principale-survol: #7652EE;
+    --principale-relief: #3A1C93;
+    --principale-claire: #2D2350;
+    --principale-texte: #B8A4FF;
+    --principale-reflet: #9C82FF;
+    --texte-sur-principale: #FFFFFF;
+    --jaune: #FFC83D;
+    --jaune-relief: #B8860B;
+    --jaune-clair: #3A3115;
+    --encre: #1B1530;
+    --fond: #120F1D;
+    --surface: #1C1830;
+    --surface-2: #262140;
+    --bordure: #8F87AE;
+    --bordure-legere: #352E52;
+    --bordure-relief: #4A4170;
+    --texte: #F1EEFA;
+    --texte-secondaire: #B7B0CF;
+    --succes: #5FE0A0;
+    --succes-fond: #123324;
+    --succes-bordure: #3CB97C;
+    --avertissement: #FFC266;
+    --avertissement-fond: #3A2A0E;
+    --avertissement-bordure: #D99A3A;
+    --erreur: #FF8A9A;
+    --erreur-fond: #3D1820;
+    --danger: #C42340;
+    --danger-survol: #A31A33;
+    --danger-relief: #6B0F20;
+    --info: #8CB8FF;
+    --info-fond: #16264A;
+    --desactive-fond: #2E2945;
+    --desactive-texte: #B0A9C8;
+    --focus: #FFC83D;
+    --qcm: #CDBEFF;            --qcm-fond: #2D2350;
+    --vrai-faux: #A9CBFF;      --vrai-faux-fond: #16264A;
+    --ouverte: #FFA8D6;        --ouverte-fond: #3D1830;
+  }
+}
+
+/* Un bloc qui force un thème repeint son propre fond et son texte */
+[data-theme] {
+  color: var(--texte);
+  background-color: var(--fond);
+}
+
+
+/* --------------------------------------------------------------------------
+   2. Base
+   -------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Pas de font-size en px : on respecte la taille choisie dans le navigateur */
+}
+
+body {
+  margin: 0;
+  font-family: var(--police);
+  font-size: var(--taille-texte);
+  font-weight: var(--graisse-normale);
+  line-height: var(--interligne);
+  color: var(--texte);
+  background-color: var(--fond);
+  overflow-wrap: break-word; /* un mot très long ne crée pas de défilement horizontal */
+}
+
+/* Racine React (Vite) : le pied de page reste en bas sur les pages courtes */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+::selection {
+  color: var(--texte);
+  background-color: var(--principale-claire);
+}
+
+/* Titres : graisse 800, serrés, pour l'énergie */
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 var(--espace-4);
+  font-weight: var(--graisse-forte);
+  line-height: var(--interligne-titre);
+  letter-spacing: -0.01em;
+  color: var(--texte);
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--taille-h1); }
+h2 { font-size: var(--taille-h2); margin-top: var(--espace-6); }
+h3 { font-size: var(--taille-h3); margin-top: var(--espace-5); }
+h4 { font-size: 1.125rem; margin-top: var(--espace-4); }
+
+h1:first-child,
+h2:first-child,
+h3:first-child,
+h4:first-child {
+  margin-top: 0;
+}
+
+p,
+ul,
+ol,
+dl {
+  margin: 0 0 var(--espace-4);
+}
+
+small,
+.petit {
+  font-size: var(--taille-petit);
+}
+
+strong,
+b {
+  font-weight: var(--graisse-forte);
+}
+
+/* Liens : soulignés en permanence, la couleur seule ne suffit pas (RGAA 10.6) */
+a {
+  color: var(--principale-texte);
+  font-weight: var(--graisse-forte);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--principale-survol);
+  text-decoration-thickness: 3px;
+}
+
+/* Focus clavier : contour de 3 px, encre en clair, jaune en sombre.
+   outline (et non box-shadow) : il reste visible en contraste élevé Windows. */
+:focus-visible {
+  outline: var(--contour-focus);
+  outline-offset: 3px;
+}
+
+hr {
+  margin: var(--espace-6) 0;
+  border: 0;
+  border-top: 2px solid var(--bordure-legere);
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--police-mono);
+  font-size: 0.9em;
+}
+
+code {
+  padding: 0.1em 0.4em;
+  background-color: var(--surface-2);
+  border-radius: var(--rayon-petit);
+}
+
+pre {
+  margin: 0 0 var(--espace-4);
+  padding: var(--espace-4);
+  background-color: var(--surface-2);
+  border-radius: var(--rayon);
+  /* Retour à la ligne plutôt que défilement horizontal à 320 px */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+}
+
+blockquote {
+  margin: 0 0 var(--espace-4);
+  padding: var(--espace-3) var(--espace-4);
+  color: var(--texte-secondaire);
+  background-color: var(--surface-2);
+  border-radius: var(--rayon);
+}
+
+mark {
+  color: var(--encre);
+  background-color: var(--jaune);
+  border-radius: 4px;
+  padding: 0 0.15em;
+}
+
+/* Masqué visuellement mais lu par les lecteurs d'écran */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Lien d'évitement « Aller au contenu » (RGAA 12.7) : visible au focus */
+.lien-evitement {
+  position: absolute;
+  top: var(--espace-2);
+  left: var(--espace-2);
+  z-index: 100;
+  padding: var(--espace-2) var(--espace-4);
+  color: var(--encre);
+  background-color: var(--jaune);
+  border-radius: var(--rayon);
+  transform: translateY(-200%);
+}
+
+.lien-evitement:focus {
+  transform: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. Formulaires
+   -------------------------------------------------------------------------- */
+
+label {
+  display: block;
+  margin: var(--espace-4) 0 var(--espace-1);
+  font-weight: var(--graisse-forte);
+}
+
+label:first-child {
+  margin-top: 0;
+}
+
+/* Champs groupés dans des <div> : on espace les groupes */
+form > div + div {
+  margin-top: var(--espace-4);
+}
+
+/* Champs texte (tous les input sauf cases, radios, fichier et boutons) */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="range"]):not([type="color"]), select, textarea) {
+  display: block;
+  width: 100%;
+  min-height: var(--hauteur-cible);
+  padding: var(--espace-2) var(--espace-4);
+  font: inherit;
+  color: var(--texte);
+  background-color: var(--fond);            /* champ « rempli », comme dans un jeu */
+  /* Bordure épaisse à 3,60:1 : le champ se repère sans le focus (WCAG 1.4.11) */
+  border: 2px solid var(--bordure);
+  border-radius: var(--rayon);
+  transition: border-color var(--duree);
+}
+
+:where(input, select, textarea):hover {
+  border-color: var(--texte-secondaire);
+}
+
+/* Au focus : bordure violette et fond blanc EN PLUS du contour de focus */
+:where(input, select, textarea):focus {
+  border-color: var(--principale);
+  background-color: var(--surface);
+}
+
+::placeholder {
+  color: var(--texte-secondaire);
+  opacity: 1;
+}
+
+textarea {
+  min-height: 12rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* Liste déroulante : flèche dessinée en CSS, couleur du texte (s'adapte au thème) */
+select {
+  appearance: none;
+  padding-right: 2.75rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.375rem) 50%,
+    calc(100% - 1rem) 50%;
+  background-size: 0.375rem 0.375rem;
+  background-repeat: no-repeat;
+}
+
+/* Cases à cocher et boutons radio natifs : accessibles par défaut,
+   agrandis et colorés en violet */
+input[type="checkbox"],
+input[type="radio"] {
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin: 0;
+  accent-color: var(--principale);
+  cursor: pointer;
+}
+
+/* Champ fichier : bordure pointillée = zone de dépôt */
+input[type="file"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  padding: var(--espace-3);
+  font: inherit;
+  font-size: var(--taille-petit);
+  color: var(--texte-secondaire);
+  background-color: var(--surface);
+  border: 2px dashed var(--bordure);
+  border-radius: var(--rayon);
+}
+
+input[type="file"]::file-selector-button {
+  min-height: 2.5rem;
+  margin-right: var(--espace-3);
+  padding: var(--espace-2) var(--espace-4);
+  font: inherit;
+  font-weight: var(--graisse-forte);
+  color: var(--principale-texte);
+  background-color: var(--principale-claire);
+  border: 2px solid var(--principale);
+  border-radius: var(--rayon);
+  cursor: pointer;
+}
+
+/* Champ en erreur : bordure rouge ET plus épaisse (pas seulement la couleur) */
+[aria-invalid="true"] {
+  border-color: var(--erreur) !important;
+  border-width: 3px !important;
+}
+
+fieldset {
+  min-width: 0; /* évite qu'un fieldset déborde à 320 px */
+  margin: 0 0 var(--espace-5);
+  padding: var(--espace-4);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon);
+}
+
+legend {
+  padding: 0 var(--espace-2);
+  font-weight: var(--graisse-forte);
+}
+
+/* Texte d'aide sous un champ */
+.aide {
+  display: block;
+  margin: var(--espace-1) 0 0;
+  font-size: var(--taille-petit);
+  color: var(--texte-secondaire);
+}
+
+label + .aide {
+  margin: 0 0 var(--espace-2);
+}
+
+/* Case à cocher + libellé, présentée comme une « tuile » cliquable de 48 px */
+.case {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espace-2);
+  min-height: var(--hauteur-cible);
+  margin: 0;
+  padding: var(--espace-2) var(--espace-4);
+  font-weight: var(--graisse-forte);
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon);
+  box-shadow: 0 var(--relief-petit) 0 var(--bordure-relief);
+  cursor: pointer;
+  transition: border-color var(--duree), background-color var(--duree);
+}
+
+.case label {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Tuile cochée : fond violet clair + bordure et texte violets (la case native
+   reste visible : l'état n'est pas porté que par la couleur) */
+.case:has(input:checked) {
+  color: var(--principale-texte);           /* 5,90:1 sur le violet clair */
+  background-color: var(--principale-claire);
+  border-color: var(--principale);
+  box-shadow: 0 var(--relief-petit) 0 var(--principale);
+}
+
+/* Consentement RGPD : la case est positionnée à gauche pour que le texte
+   (qui contient un lien) reste un paragraphe normal */
+.consentement {
+  position: relative;
+  margin: var(--espace-4) 0;
+  padding: var(--espace-3) var(--espace-4) var(--espace-3) 3.25rem;
+  font-size: var(--taille-petit);
+  background-color: var(--surface-2);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon);
+}
+
+.consentement input[type="checkbox"] {
+  position: absolute;
+  top: calc(var(--espace-3) + 0.125rem);
+  left: var(--espace-4);
+}
+
+.consentement label {
+  display: inline;
+  margin: 0;
+  font-weight: var(--graisse-normale);
+}
+
+
+/* --------------------------------------------------------------------------
+   4. Boutons (en relief, ils s'enfoncent au clic)
+   -------------------------------------------------------------------------- */
+
+button,
+.bouton,
+input[type="submit"],
+input[type="button"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espace-2);
+  min-height: var(--hauteur-cible);
+  padding: var(--espace-2) var(--espace-5);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: var(--graisse-forte);
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-decoration: none;
+  /* Majuscules en CSS seulement : le lecteur d'écran lit le texte normal.
+     Supprimer cette ligne pour des boutons en casse normale. */
+  text-transform: uppercase;
+  color: var(--texte-sur-principale);              /* blanc sur violet : 5,55:1 */
+  background-color: var(--principale);
+  border: 2px solid var(--principale);
+  border-radius: var(--rayon-bouton);
+  box-shadow: 0 var(--relief) 0 var(--principale-relief);
+  cursor: pointer;
+  transition: transform var(--duree), box-shadow var(--duree), background-color var(--duree);
+}
+
+button:hover,
+.bouton:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover {
+  color: var(--texte-sur-principale);
+  background-color: var(--principale-survol);
+  border-color: var(--principale-survol);
+}
+
+/* Effet « touche enfoncée » */
+button:active,
+.bouton:active,
+input[type="submit"]:active,
+input[type="button"]:active {
+  transform: translateY(var(--relief));
+  box-shadow: 0 0 0 var(--principale-relief);
+}
+
+/* Secondaire : blanc, bordure claire et relief gris-violet.
+   Le bouton est identifié par son texte violet (7,03:1) : WCAG 1.4.11
+   n'exige pas de contour contrasté pour un bouton textuel. */
+.bouton-secondaire {
+  color: var(--principale-texte);
+  background-color: var(--surface);
+  border-color: var(--bordure-legere);
+  box-shadow: 0 var(--relief) 0 var(--bordure-relief);
+}
+
+.bouton-secondaire:hover {
+  color: var(--principale-texte);
+  background-color: var(--surface-2);
+  border-color: var(--bordure-legere);
+}
+
+.bouton-secondaire:active {
+  box-shadow: 0 0 0 var(--bordure-relief);
+}
+
+/* Danger : actions destructrices (supprimer un cours, supprimer le compte) */
+.bouton-danger {
+  color: #FFFFFF;                                  /* 5,73:1 */
+  background-color: var(--danger);
+  border-color: var(--danger);
+  box-shadow: 0 var(--relief) 0 var(--danger-relief);
+}
+
+.bouton-danger:hover {
+  color: #FFFFFF;
+  background-color: var(--danger-survol);
+  border-color: var(--danger-survol);
+}
+
+.bouton-danger:active {
+  box-shadow: 0 0 0 var(--danger-relief);
+}
+
+/* Désactivé : plat (sans relief), gris. Exempté de contraste par WCAG,
+   mais gardé lisible (5,08:1). La forme « plate » signale aussi l'état. */
+button:disabled,
+button[aria-disabled="true"],
+.bouton[aria-disabled="true"],
+input[type="submit"]:disabled {
+  color: var(--desactive-texte);
+  background-color: var(--desactive-fond);
+  border-color: var(--desactive-fond);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* En cours : <button aria-busy="true" disabled>Génération en cours…</button>
+   Le texte change aussi : l'animation n'est jamais la seule information. */
+button[aria-busy="true"] {
+  cursor: progress;
+}
+
+button[aria-busy="true"]::before {
+  content: "";
+  flex: none;
+  width: 1em;
+  height: 1em;
+  border: 3px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: rotation 0.8s linear infinite;
+}
+
+@keyframes rotation {
+  to { transform: rotate(360deg); }
+}
+
+/* Groupe de boutons */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-3) var(--espace-3);
+  margin-top: var(--espace-4);
+  padding-bottom: var(--relief); /* place pour le relief */
+}
+
+/* Sur petit écran, les boutons prennent toute la largeur : plus faciles à toucher */
+@media (max-width: 29.99rem) {
+  .actions > :is(button, .bouton, input[type="submit"]) {
+    flex: 1 1 100%;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   5. Structure des pages
+   -------------------------------------------------------------------------- */
+
+/* En-tête de l'application */
+.entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-2) var(--espace-5);
+  padding: var(--espace-2) var(--espace-4);
+  background-color: var(--surface);
+  border-bottom: 2px solid var(--bordure-legere);
+}
+
+.entete img,
+.entete svg {
+  display: block;
+  width: auto;
+  height: 2.25rem;
+}
+
+.entete h1,
+.entete p {
+  margin: 0;
+  font-size: var(--taille-h3);
+}
+
+.entete nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-1) var(--espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Liens de navigation en « pastilles » majuscules : non soulignés (hors texte,
+   RGAA 10.6) ; la page courante a un fond violet clair ET un cadre violet */
+.entete nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hauteur-cible);
+  padding: 0 var(--espace-3);
+  font-size: var(--taille-petit);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-secondaire);
+  text-decoration: none;
+  border: 2px solid var(--surface);         /* cadre invisible mais opaque */
+  border-radius: var(--rayon);
+}
+
+.entete nav a:hover {
+  color: var(--principale-texte);
+  background-color: var(--surface-2);
+}
+
+.entete nav a[aria-current="page"] {
+  color: var(--principale-texte);
+  background-color: var(--principale-claire);
+  border-color: var(--principale);
+}
+
+.entete > a {
+  display: block;
+  border-radius: var(--rayon-petit);
+}
+
+.entete button {
+  min-height: 2.5rem;
+  padding: var(--espace-1) var(--espace-4);
+  font-size: var(--taille-petit);
+  color: var(--principale-texte);
+  background-color: var(--surface);
+  border-color: var(--bordure-legere);
+  box-shadow: 0 var(--relief-petit) 0 var(--bordure-relief);
+}
+
+.entete button:hover {
+  color: var(--principale-texte);
+  background-color: var(--surface-2);
+}
+
+/* Contenu principal */
+.contenu {
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: var(--largeur-max);
+  margin: 0 auto;
+  padding: var(--espace-5) var(--espace-4) var(--espace-7);
+}
+
+.contenu p {
+  max-width: var(--mesure);
+}
+
+/* Titre de page + actions associées (ex. « Mes cours » + « Nouveau cours ») */
+.entete-contenu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-3) var(--espace-4);
+  margin-bottom: var(--espace-5);
+}
+
+.entete-contenu h1,
+.entete-contenu h2,
+.entete-contenu p {
+  margin: 0;
+}
+
+.entete-contenu .actions {
+  margin: 0;
+}
+
+/* Pied de page */
+.pied-de-page {
+  margin-top: auto;
+  padding: var(--espace-5) var(--espace-4);
+  font-size: var(--taille-petit);
+  text-align: center;
+  color: var(--texte-secondaire);
+  background-color: var(--surface);
+  border-top: 2px solid var(--bordure-legere);
+}
+
+.pied-de-page p {
+  max-width: none;
+  margin: 0 0 var(--espace-2);
+}
+
+.pied-de-page ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--espace-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pied-de-page a {
+  display: inline-block;
+  padding: var(--espace-2) 0; /* zone cliquable agrandie */
+}
+
+@media (min-width: 40rem) {
+  .entete { padding-inline: var(--espace-6); }
+  .contenu { padding-inline: var(--espace-6); padding-top: var(--espace-6); }
+}
+
+
+/* --------------------------------------------------------------------------
+   6. Cartes et sections
+   -------------------------------------------------------------------------- */
+
+/* Cartes plates : bordure de 2 px, opaques, sans relief (elles ne se
+   cliquent pas). Bordure décorative : une carte n'est pas un composant
+   interactif, le seuil 3:1 ne s'applique pas. */
+.carte,
+.formulaire-cours,
+.formulaire-generation,
+.section-quiz,
+.section-compte,
+.texte-cours {
+  margin-bottom: var(--espace-5);
+  padding: var(--espace-5) var(--espace-4);
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon-grand);
+}
+
+@media (min-width: 40rem) {
+  .carte,
+  .formulaire-cours,
+  .formulaire-generation,
+  .section-quiz,
+  .section-compte,
+  .texte-cours {
+    padding: var(--espace-6);
+  }
+}
+
+/* Pas de carte dans une carte */
+.carte :is(.formulaire-cours, .formulaire-generation, .section-quiz, .section-compte, .texte-cours) {
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Connexion / inscription : carte centrée sur un fond à pois
+   (dégradé CSS de quelques octets, aucune image) */
+.connexion {
+  flex: 1 0 auto;
+  display: grid;
+  place-items: start center;
+  padding: var(--espace-6) var(--espace-4);
+  background-color: var(--fond);
+  background-image: radial-gradient(var(--principale-claire) 2px, transparent 2.5px);
+  background-size: 1.5rem 1.5rem;
+}
+
+@media (min-width: 40rem) and (min-height: 40rem) {
+  .connexion { place-items: center; }
+}
+
+.connexion .carte {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.connexion h1 {
+  font-size: var(--taille-h2);
+  text-align: center;
+}
+
+.connexion button[type="submit"] {
+  width: 100%;
+  margin-top: var(--espace-5);
+}
+
+/* Onglets (Connexion / Créer un compte) en commutateur segmenté.
+   Onglet actif : pastille blanche en relief + texte violet (forme ET couleur). */
+.onglets {
+  display: flex;
+  gap: var(--espace-1);
+  margin-bottom: var(--espace-5);
+  padding: var(--espace-1);
+  background-color: var(--surface-2);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon);
+}
+
+.onglets button {
+  flex: 1 1 0;
+  min-height: 2.75rem;
+  padding: var(--espace-2) var(--espace-3);
+  font-size: var(--taille-petit);
+  color: var(--texte-secondaire);
+  background-color: var(--surface-2);       /* même fond que le rail : opaque */
+  border: 2px solid var(--surface-2);
+  border-radius: calc(var(--rayon) - 4px);
+  box-shadow: none;
+}
+
+.onglets button:hover {
+  color: var(--texte);
+  background-color: var(--surface);
+  border-color: var(--surface);
+}
+
+.onglets button:active {
+  transform: none;
+}
+
+.onglets [aria-selected="true"],
+.onglets .actif,
+.onglets [aria-selected="true"]:hover {
+  color: var(--principale-texte);
+  background-color: var(--surface);
+  border-color: var(--principale);
+  box-shadow: 0 var(--relief-petit) 0 var(--principale);
+}
+
+/* Formulaire de création de cours */
+.formulaire-cours textarea {
+  min-height: 18rem;
+}
+
+/* Rendu Markdown (cours et aperçu) : lignes limitées à 68 caractères */
+.texte-cours,
+.apercu-markdown {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.texte-cours > *,
+.apercu-markdown > * {
+  max-width: var(--mesure);
+}
+
+/* Le h1 de la page existe déjà : les titres du Markdown sont décalés d'un niveau */
+.texte-cours h1,
+.apercu-markdown h1 { font-size: var(--taille-h2); }
+.texte-cours h2,
+.apercu-markdown h2 { font-size: var(--taille-h3); }
+.texte-cours h3,
+.apercu-markdown h3 { font-size: 1.125rem; }
+
+.texte-cours ul,
+.texte-cours ol,
+.apercu-markdown ul,
+.apercu-markdown ol {
+  padding-left: var(--espace-5);
+}
+
+.texte-cours li + li,
+.apercu-markdown li + li {
+  margin-top: var(--espace-1);
+}
+
+.texte-cours li::marker,
+.apercu-markdown li::marker {
+  color: var(--principale-texte);
+}
+
+.texte-cours table,
+.apercu-markdown table {
+  margin-bottom: var(--espace-4);
+}
+
+.apercu-markdown {
+  margin: var(--espace-4) 0;
+  padding: var(--espace-4);
+  background-color: var(--fond);
+  border: 2px dashed var(--bordure-legere);
+  border-radius: var(--rayon);
+}
+
+/* Page de détail d'un cours : sections empilées */
+.detail-cours {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espace-5);
+}
+
+.detail-cours > * {
+  margin-bottom: 0;
+}
+
+
+/* --------------------------------------------------------------------------
+   7. Tableaux
+   -------------------------------------------------------------------------- */
+
+/* Sur mobile, le tableau défile dans son cadre, jamais la page.
+   Côté JSX : <div className="table-conteneur" role="region"
+   aria-label="Mes cours" tabIndex={0}> pour le défilement au clavier. */
+.table-conteneur {
+  width: 100%;
+  margin-bottom: var(--espace-5);
+  overflow-x: auto;
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon-grand);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-conteneur table {
+  min-width: 38rem;
+}
+
+caption {
+  padding: var(--espace-3) var(--espace-4);
+  font-weight: var(--graisse-forte);
+  text-align: left;
+}
+
+th,
+td {
+  padding: var(--espace-3) var(--espace-4);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 2px solid var(--bordure-legere);
+}
+
+thead th {
+  font-size: var(--taille-petit);
+  font-weight: var(--graisse-forte);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--texte-secondaire);           /* 5,98:1 sur surface-2 */
+  background-color: var(--surface-2);
+}
+
+tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+tbody tr:hover {
+  background-color: var(--fond);
+}
+
+td .actions {
+  margin: 0;
+  flex-wrap: nowrap;
+}
+
+td .actions > :is(button, .bouton, input[type="submit"]) {
+  flex: none;
+}
+
+td button,
+td .bouton {
+  min-height: 2.5rem;
+  padding: var(--espace-1) var(--espace-3);
+  font-size: var(--taille-petit);
+}
+
+
+/* --------------------------------------------------------------------------
+   8. Badges : statut, type de question, IA
+   -------------------------------------------------------------------------- */
+
+/* Statut : pilule + icône + libellé. Brouillon = bordure pointillée,
+   Validé = bordure pleine. Trois indices en plus de la couleur. */
+.statut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.75rem;
+  font-size: var(--taille-petit);
+  font-weight: var(--graisse-forte);
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--texte-secondaire);
+  background-color: var(--surface-2);
+  border: 2px solid var(--bordure);
+  border-radius: var(--rayon-pilule);
+}
+
+.statut-brouillon {
+  color: var(--avertissement);              /* 5,78:1 */
+  background-color: var(--avertissement-fond);
+  border: 2px dashed var(--avertissement-bordure);
+}
+
+.statut-valide {
+  color: var(--succes);                     /* 4,76:1 */
+  background-color: var(--succes-fond);
+  border: 2px solid var(--succes-bordure);
+}
+
+/* Type de question : étiquette carrée (et non pilule) en majuscules,
+   couleur par type en complément du libellé.
+   Modificateurs : .type-qcm, .type-vrai-faux, .type-ouverte */
+.type-question {
+  display: inline-block;
+  padding: 0.125rem var(--espace-2);
+  font-size: var(--taille-petit);
+  font-weight: var(--graisse-forte);
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--qcm);
+  background-color: var(--qcm-fond);
+  border-radius: var(--rayon-petit);
+}
+
+.type-vrai-faux {
+  color: var(--vrai-faux);
+  background-color: var(--vrai-faux-fond);
+}
+
+.type-ouverte {
+  color: var(--ouverte);
+  background-color: var(--ouverte-fond);
+}
+
+/* Contenu produit par l'IA : pastille jaune soleil + étincelle du logo */
+.badge-ia {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.75rem;
+  font-size: var(--taille-petit);
+  font-weight: var(--graisse-forte);
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--encre);                      /* 11,35:1 sur le jaune */
+  background-color: var(--jaune);
+  border-radius: var(--rayon-pilule);
+}
+
+/* Icônes décoratives communes (masque SVG coloré par la couleur du texte) */
+.statut-brouillon::before,
+.statut-valide::before,
+.badge-ia::before,
+.avertissement::before,
+.erreur::before,
+.succes::before,
+.info::before {
+  content: "";
+  flex: none;
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask: var(--icone-info) center / contain no-repeat;
+  mask: var(--icone-info) center / contain no-repeat;
+}
+
+.statut-brouillon::before {
+  -webkit-mask-image: var(--icone-crayon);
+  mask-image: var(--icone-crayon);
+}
+
+.statut-valide::before {
+  -webkit-mask-image: var(--icone-coche);
+  mask-image: var(--icone-coche);
+}
+
+.badge-ia::before {
+  -webkit-mask-image: var(--icone-etincelle);
+  mask-image: var(--icone-etincelle);
+}
+
+
+/* --------------------------------------------------------------------------
+   9. Messages : avertissement, erreur, succès, information
+   -------------------------------------------------------------------------- */
+
+/* Le texte reste en couleur de lecture (≥ 12:1 dans les deux thèmes) ;
+   l'icône, la bordure et le fond indiquent la nature du message.
+   Côté JSX, commencer le message par un mot explicite :
+   « Attention : », « Erreur : », « C'est fait : »… */
+.avertissement,
+.erreur,
+.succes,
+.info {
+  position: relative;
+  display: block;
+  margin: 0 0 var(--espace-4);
+  padding: var(--espace-3) var(--espace-4) var(--espace-3) 3rem;
+  color: var(--texte);
+  border: 2px solid;
+  border-radius: var(--rayon);
+}
+
+.avertissement::before,
+.erreur::before,
+.succes::before,
+.info::before {
+  position: absolute;
+  top: calc(var(--espace-3) + 0.1rem);
+  left: var(--espace-4);
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.avertissement {
+  background-color: var(--avertissement-fond);
+  border-color: var(--avertissement-bordure);
+}
+
+.avertissement::before {
+  background-color: var(--avertissement);
+  -webkit-mask-image: var(--icone-alerte);
+  mask-image: var(--icone-alerte);
+}
+
+.avertissement strong {
+  color: var(--avertissement);
+}
+
+.erreur {
+  background-color: var(--erreur-fond);
+  border-color: var(--erreur);
+}
+
+.erreur::before {
+  background-color: var(--erreur);
+  -webkit-mask-image: var(--icone-erreur);
+  mask-image: var(--icone-erreur);
+}
+
+.erreur strong {
+  color: var(--erreur);
+}
+
+.succes {
+  background-color: var(--succes-fond);
+  border-color: var(--succes-bordure);
+}
+
+.succes::before {
+  background-color: var(--succes);
+  -webkit-mask-image: var(--icone-succes);
+  mask-image: var(--icone-succes);
+}
+
+.succes strong {
+  color: var(--succes);
+}
+
+.info {
+  background-color: var(--info-fond);
+  border-color: var(--info);
+}
+
+.info::before {
+  background-color: var(--info);
+}
+
+.info strong {
+  color: var(--info);
+}
+
+.avertissement > :last-child,
+.erreur > :last-child,
+.succes > :last-child,
+.info > :last-child {
+  margin-bottom: 0;
+}
+
+/* Encadré de confirmation de suppression : bordure épaisse + relief rouge.
+   Côté JSX : role="alertdialog", focus placé sur le titre à l'ouverture. */
+.confirmation {
+  margin: var(--espace-4) 0;
+  padding: var(--espace-4) var(--espace-5);
+  color: var(--texte);
+  background-color: var(--erreur-fond);
+  border: 2px solid var(--erreur);
+  border-radius: var(--rayon-grand);
+}
+
+.confirmation :is(h2, h3, p:first-child > strong) {
+  margin-top: 0;
+  color: var(--erreur);
+}
+
+.confirmation .actions {
+  margin-top: var(--espace-4);
+}
+
+/* Génération en cours (20 à 60 s) : <div className="generation-en-cours" role="status">
+   + texte explicite. L'étincelle qui rebondit et la barre qui se remplit
+   sont décoratives ; elles s'arrêtent si l'utilisateur réduit les animations. */
+.generation-en-cours {
+  position: relative;
+  margin: 0 0 var(--espace-4);
+  padding: var(--espace-4) var(--espace-4) calc(var(--espace-4) * 2 + 1rem) 3.5rem;
+  color: var(--texte);
+  background-color: var(--principale-claire);
+  border: 2px solid var(--principale);
+  border-radius: var(--rayon);
+}
+
+.generation-en-cours::before {
+  content: "";
+  position: absolute;
+  top: var(--espace-4);
+  left: var(--espace-4);
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: var(--principale-texte);
+  -webkit-mask: var(--icone-etincelle) center / contain no-repeat;
+  mask: var(--icone-etincelle) center / contain no-repeat;
+  animation: rebond 0.9s ease-in-out infinite alternate;
+}
+
+.generation-en-cours::after {
+  content: "";
+  position: absolute;
+  right: var(--espace-4);
+  bottom: var(--espace-4);
+  left: var(--espace-4);
+  height: 1rem;
+  border-radius: var(--rayon-pilule);
+  /* Rail opaque + remplissage violet avec un reflet plus clair (aucune
+     transparence : toutes les couleurs sont pleines) */
+  background:
+    linear-gradient(to bottom,
+      var(--principale) 0 22%, var(--principale-reflet) 22% 44%,
+      var(--principale) 44% 100%) left / 60% 100% no-repeat,
+    var(--surface);
+  animation: remplissage 2.4s ease-in-out infinite;
+}
+
+/* Si le JSX contient déjà un <progress>, on n'affiche pas la barre décorative */
+.generation-en-cours:has(progress)::after {
+  display: none;
+}
+
+.generation-en-cours progress {
+  display: block;
+  width: 100%;
+  height: 0.625rem;
+  margin-top: var(--espace-3);
+  accent-color: var(--principale);
+}
+
+.generation-en-cours p {
+  margin: 0;
+}
+
+@keyframes rebond {
+  from { transform: translateY(0) scale(1); }
+  to { transform: translateY(-4px) scale(1.15) rotate(15deg); }
+}
+
+@keyframes remplissage {
+  0% { background-size: 0% 100%; }
+  75%, 100% { background-size: 100% 100%; }
+}
+
+
+/* --------------------------------------------------------------------------
+   10. Génération de quiz
+   -------------------------------------------------------------------------- */
+
+.formulaire-generation h2 {
+  margin-top: 0;
+}
+
+.choix-generation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espace-4);
+}
+
+/* Paramètres (nombre, niveau, difficulté) : 1 colonne à 320 px, 3 sur ordinateur */
+.ligne-parametres {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: var(--espace-4);
+}
+
+.ligne-parametres label {
+  margin-top: 0;
+}
+
+.types-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-3);
+  margin: 0;
+  padding-bottom: calc(var(--espace-4) + var(--relief-petit));
+}
+
+.types-questions legend {
+  margin-bottom: var(--espace-2);
+}
+
+/* Liste des quiz d'un cours : tuiles plates (seuls les liens et boutons se cliquent) */
+.liste-quiz {
+  display: grid;
+  gap: var(--espace-3);
+  margin: 0 0 var(--espace-5);
+  padding: 0;
+  list-style: none;
+}
+
+.liste-quiz > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-2) var(--espace-4);
+  padding: var(--espace-3) var(--espace-4);
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon);
+}
+
+.liste-quiz .actions {
+  margin: 0 0 0 auto;
+}
+
+/* Historique des générations, dans un <details> natif (clavier inclus) */
+.historique-generations {
+  margin: 0 0 var(--espace-4);
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon);
+}
+
+.historique-generations > summary {
+  display: list-item;
+  min-height: var(--hauteur-cible);
+  padding: var(--espace-3) var(--espace-4);
+  font-weight: var(--graisse-forte);
+  border-radius: var(--rayon);
+  cursor: pointer;
+}
+
+.historique-generations > summary::marker {
+  color: var(--principale-texte);
+}
+
+.historique-generations > summary:hover {
+  background-color: var(--surface-2);
+}
+
+.historique-generations[open] > summary {
+  border-bottom: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon) var(--rayon) 0 0;
+}
+
+.historique-generations > :not(summary) {
+  margin: var(--espace-3) var(--espace-4);
+}
+
+.historique-generations ul,
+.historique-generations ol {
+  padding: 0;
+  list-style: none;
+  font-size: var(--taille-petit);
+}
+
+.historique-generations li {
+  padding: var(--espace-2) 0;
+  border-bottom: 2px solid var(--bordure-legere);
+}
+
+.historique-generations li:last-child {
+  border-bottom: 0;
+}
+
+
+/* --------------------------------------------------------------------------
+   11. Questions du quiz
+   -------------------------------------------------------------------------- */
+
+.section-quiz h2 {
+  margin-top: 0;
+}
+
+.question,
+.question-edition {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr); /* la colonne peut rétrécir à 320 px */
+  gap: var(--espace-3);
+  margin: 0 0 var(--espace-5);
+  padding: var(--espace-4);
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon-grand);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 40rem) {
+  .question,
+  .question-edition {
+    padding: var(--espace-5);
+  }
+}
+
+.question h3,
+.question-edition h3,
+.question p,
+.question-edition p {
+  margin: 0;
+}
+
+/* Mode édition : bordure pointillée violette = contenu modifiable, pas encore figé */
+.question-edition {
+  border: 2px dashed var(--principale);
+}
+
+.question-edition label {
+  margin: 0 0 var(--espace-1);
+}
+
+/* Réponses proposées : tuiles plates avec une « touche » A, B, C, comme dans
+   un jeu de quiz. La lettre est décorative (content … / "" : non lue). */
+.choix {
+  display: grid;
+  gap: var(--espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: choix;
+}
+
+.choix > li {
+  position: relative;
+  min-height: var(--hauteur-cible);
+  padding: var(--espace-3) var(--espace-4) var(--espace-3) 3.5rem;
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon);
+  counter-increment: choix;
+}
+
+.choix > li::before {
+  content: counter(choix, upper-alpha);
+  content: counter(choix, upper-alpha) / "";
+  position: absolute;
+  top: var(--espace-3);
+  left: var(--espace-3);
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: var(--taille-petit);
+  font-weight: var(--graisse-forte);
+  line-height: 1;
+  color: var(--texte-secondaire);           /* 6,90:1 */
+  background-color: var(--surface);
+  border: 2px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+}
+
+/* Bonne réponse : fond vert + bordure verte + touche verte + graisse forte
+   + coche à droite. Côté JSX, ajouter un texte :
+   <span className="sr-only">(bonne réponse)</span> ou un libellé visible. */
+.bonne-reponse {
+  position: relative;
+  padding: var(--espace-3) 3rem var(--espace-3) var(--espace-4);
+  font-weight: var(--graisse-forte);
+  color: var(--texte);
+  background-color: var(--succes-fond);
+  border: 2px solid var(--succes-bordure);
+  border-radius: var(--rayon);
+}
+
+.choix > .bonne-reponse {
+  padding: var(--espace-3) 3rem var(--espace-3) 3.5rem;
+  background-color: var(--succes-fond);
+  border-color: var(--succes-bordure);
+}
+
+.choix > .bonne-reponse::before {
+  color: var(--succes);                     /* 5,37:1 sur blanc */
+  border-color: var(--succes-bordure);
+}
+
+.bonne-reponse::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: var(--espace-4);
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: -0.75rem;
+  background-color: var(--succes);
+  -webkit-mask: var(--icone-succes) center / contain no-repeat;
+  mask: var(--icone-succes) center / contain no-repeat;
+}
+
+/* Explication / réponse attendue : encadré « astuce » jaune clair */
+.explication {
+  padding: var(--espace-3) var(--espace-4);
+  color: var(--texte);                      /* 15,93:1 en clair, 11,25:1 en sombre */
+  background-color: var(--jaune-clair);
+  border-radius: var(--rayon);
+}
+
+.explication > :last-child {
+  margin-bottom: 0;
+}
+
+/* Ligne d'édition d'un choix : [radio] [texte du choix] [Supprimer] */
+.ligne-choix {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-2);
+  padding-bottom: var(--relief-petit);
+}
+
+.ligne-choix :where(input:not([type="checkbox"]):not([type="radio"])) {
+  flex: 1 1 6rem;
+  width: auto;
+  min-width: 0;
+}
+
+.ligne-choix label {
+  margin: 0;
+}
+
+/* Bouton « Supprimer » d'un choix : icône poubelle seule, pour laisser la
+   place au texte du choix sur mobile. Le texte du bouton reste lu par les
+   lecteurs d'écran (font-size: 0 ne le retire pas de l'arbre
+   d'accessibilité) ; préciser aria-label="Supprimer le choix 2". */
+.ligne-choix button {
+  flex: none;
+  width: var(--hauteur-cible);
+  min-height: var(--hauteur-cible);
+  padding: 0;
+  font-size: 0;
+  color: var(--erreur);                     /* icône : 5,73:1 sur blanc */
+  background-color: var(--surface);
+  border-color: var(--bordure-legere);
+  box-shadow: 0 var(--relief-petit) 0 var(--bordure-relief);
+}
+
+.ligne-choix button::before {
+  content: "";
+  width: 1.375rem;
+  height: 1.375rem;
+  background-color: currentColor;
+  -webkit-mask: var(--icone-poubelle) center / contain no-repeat;
+  mask: var(--icone-poubelle) center / contain no-repeat;
+}
+
+.ligne-choix button:hover {
+  color: var(--erreur);
+  background-color: var(--erreur-fond);
+  border-color: var(--erreur);
+}
+
+.ligne-choix button:active {
+  transform: translateY(var(--relief-petit));
+  box-shadow: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   12. Mon compte
+   -------------------------------------------------------------------------- */
+
+.section-compte h2 {
+  margin-top: 0;
+}
+
+.section-compte dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 var(--espace-4);
+}
+
+.section-compte dt {
+  font-size: var(--taille-petit);
+  color: var(--texte-secondaire);
+}
+
+.section-compte dd {
+  margin: 0 0 var(--espace-3);
+  font-weight: var(--graisse-forte);
+}
+
+@media (min-width: 40rem) {
+  .section-compte dl {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+
+  .section-compte dd {
+    margin-bottom: var(--espace-2);
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   13. Préférences d'accessibilité et impression
+   -------------------------------------------------------------------------- */
+
+/* Mouvement réduit : plus d'animation ni d'effet d'enfoncement ;
+   le texte « Génération en cours… » reste affiché */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  button:active,
+  .bouton:active {
+    transform: none;
+  }
+}
+
+/* Contraste élevé de Windows : on restitue bordures et icônes */
+@media (forced-colors: active) {
+  .statut,
+  .type-question,
+  .badge-ia,
+  .bonne-reponse,
+  .avertissement,
+  .erreur,
+  .succes,
+  .info,
+  .confirmation,
+  .generation-en-cours,
+  .case {
+    border: 2px solid CanvasText;
+  }
+
+  .statut-brouillon {
+    border-style: dashed;
+  }
+
+  .statut-brouillon::before,
+  .statut-valide::before,
+  .badge-ia::before,
+  .avertissement::before,
+  .erreur::before,
+  .succes::before,
+  .info::before,
+  .bonne-reponse::after,
+  .ligne-choix button::before,
+  .generation-en-cours::before {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  .generation-en-cours::after {
+    display: none;
+  }
+
+  select {
+    appearance: auto;
+    background-image: none;
+  }
+
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/* Impression d'un quiz : sobre, sans navigation ni boutons (moins de pages) */
+@media print {
+  .entete,
+  .pied-de-page,
+  .actions,
+  .formulaire-generation,
+  .historique-generations,
+  .lien-evitement,
+  button {
+    display: none !important;
+  }
+
+  body {
+    background: #FFFFFF;
+  }
+
+  .carte,
+  .section-quiz,
+  .texte-cours,
+  .question,
+  .choix > li {
+    box-shadow: none;
+    border-color: #767676;
+    break-inside: avoid;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   14. Ajouts propres au projet EduQuizAI
+   -------------------------------------------------------------------------- */
+
+/* Les enseignants collent souvent un cours avec de simples retours à la
+   ligne : en Markdown ils seraient fusionnés en un seul paragraphe. On les
+   conserve à l'affichage, comme l'ancienne feuille de style. */
+.texte-cours p,
+.apercu-markdown p {
+  white-space: pre-line;
+}
+
+/* Titre de section suivi d'un badge (ex. « Générer un quiz » + « Assisté par IA ») */
+.titre-avec-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-2) var(--espace-3);
+  margin-bottom: var(--espace-2);
+}
+
+.titre-avec-badge h2 {
+  margin: 0;
+}
+
+/* Page de connexion : phrase d'accroche sous le titre */
+.connexion .accroche {
+  text-align: center;
+  color: var(--texte-secondaire);
+}
+
+/* Le fieldset principal d'un formulaire déjà présenté en carte ne redessine
+   pas un second cadre (règle « pas de carte dans une carte ») */
+.connexion form > fieldset,
+.formulaire-cours > fieldset {
+  padding: 0;
+  border: 0;
+}
+
+.choix-generation {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Dans la grille d'une question, l'étiquette de type garde sa largeur naturelle */
+.question > .type-question,
+.question-edition .type-question {
+  justify-self: start;
+}
+
+/* Corbeille d'un choix désactivée (2 choix minimum) : plate et grise comme
+   les autres boutons désactivés (sinon .ligne-choix button l'emporterait) */
+.ligne-choix button:disabled {
+  color: var(--desactive-texte);
+  background-color: var(--desactive-fond);
+  border-color: var(--desactive-fond);
+  box-shadow: none;
+}
+
+/* L'onglet actif garde son style au survol (la charte ne le prévoit que pour
+   aria-selected ; nos onglets utilisent aria-pressed + la classe .actif) */
+.onglets .actif:hover {
+  color: var(--principale-texte);
+  background-color: var(--surface);
+  border-color: var(--principale);
+}
+
+/* Page d'accueil publique (PageAccueil.jsx) */
+
+/* Boutons « Se connecter » / « Créer un compte » de l'en-tête (visiteurs).
+   Sélecteur renforcé : la règle « .entete nav a » de la charte (liens de
+   navigation en pastilles) l'emporterait sinon sur l'aspect bouton. */
+.entete nav a.bouton {
+  min-height: 2.5rem;
+  padding: var(--espace-1) var(--espace-4);
+  color: var(--texte-sur-principale);
+  background-color: var(--principale);
+  border-color: var(--principale);
+}
+
+.entete nav a.bouton:hover {
+  color: var(--texte-sur-principale);
+  background-color: var(--principale-survol);
+}
+
+.entete nav a.bouton-secondaire,
+.entete nav a.bouton-secondaire:hover {
+  color: var(--principale-texte);
+  background-color: var(--surface);
+  border-color: var(--bordure-legere);
+}
+
+.accueil {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--espace-7);
+}
+
+.accueil h2 {
+  margin-top: 0;
+}
+
+/* Bandeau de présentation sur le fond à pois de la page de connexion */
+.accueil-presentation {
+  padding: var(--espace-6) var(--espace-4);
+  text-align: center;
+  background-color: var(--surface);
+  background-image: radial-gradient(var(--principale-claire) 2px, transparent 2.5px);
+  background-size: 1.5rem 1.5rem;
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon-grand);
+}
+
+.accueil-presentation h1 {
+  max-width: 24ch;
+  margin: var(--espace-4) auto;
+}
+
+.accueil-presentation .accroche {
+  max-width: 56ch;
+  margin: 0 auto;
+  font-size: 1.1875rem;
+  color: var(--texte-secondaire);
+}
+
+.accueil-presentation .actions {
+  justify-content: center;
+  margin-top: var(--espace-5);
+}
+
+/* Trois étapes numérotées : cartes plates, numéro dans une pastille violette */
+.etapes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: var(--espace-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: etape;
+}
+
+.etapes > li {
+  padding: var(--espace-5);
+  background-color: var(--surface);
+  border: 2px solid var(--bordure-legere);
+  border-radius: var(--rayon-grand);
+  counter-increment: etape;
+}
+
+/* Le numéro est décoratif (content … / "") : l'ordre est déjà donné par la liste <ol> */
+.etapes > li::before {
+  content: counter(etape);
+  content: counter(etape) / "";
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: var(--espace-3);
+  font-weight: var(--graisse-forte);
+  color: var(--texte-sur-principale);
+  background-color: var(--principale);
+  border-radius: var(--rayon);
+}
+
+.etapes h3 {
+  margin: 0 0 var(--espace-2);
+}
+
+.etapes p {
+  margin: 0;
+  color: var(--texte-secondaire);
+}
+
+/* Texte + exemple de question côte à côte sur ordinateur, empilés sur mobile */
+.accueil-deux-colonnes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: var(--espace-5);
+  align-items: start;
+}
+
+.accueil-deux-colonnes .question {
+  margin: 0;
+}
+
+/* Engagements RGPD : coche verte décorative devant chaque point */
+.engagements {
+  display: grid;
+  gap: var(--espace-2);
+  padding: 0;
+  list-style: none;
+}
+
+.engagements li {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.engagements li::before {
+  content: "";
+  position: absolute;
+  top: 0.2em;
+  left: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: var(--succes);
+  -webkit-mask: var(--icone-succes) center / contain no-repeat;
+  mask: var(--icone-succes) center / contain no-repeat;
+}
+
+@media (min-width: 40rem) {
+  .accueil-presentation {
+    padding: var(--espace-7) var(--espace-6);
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   15. Adaptation « lisibilité » (fond blanc), demandée après la charte 2.1
+   Les jetons sont redéfinis ici plutôt que dans la section 1 : la charte
+   d'origine reste lisible telle quelle, et l'écart est documenté au même
+   endroit. Ratios WCAG 2.1 calculés comme dans la charte (tronqués).
+   -------------------------------------------------------------------------- */
+
+:root,
+[data-theme="clair"] {
+  --fond: #FFFFFF;                  /* fond de page blanc (au lieu du lavande) */
+  --surface-2: #F4F2FA;             /* texte 15,81:1 · lien 6,34:1 */
+  --texte-secondaire: #4A4560;      /* 9,08:1 sur blanc (au lieu de 6,90:1) */
+  --bordure-legere: #D6CFEA;        /* cartes plus visibles sur le blanc (décoratif, 1,50:1) */
+}
+
+/* Sur fond blanc, le survol d'une ligne de tableau doit rester perceptible */
+tbody tr:hover {
+  background-color: var(--surface-2);
+}
+
+/* Casse normale : un texte en majuscules se lit plus lentement (silhouette
+   des mots perdue). Boutons, navigation, en-têtes de tableau et étiquettes. */
+button,
+.bouton,
+input[type="submit"],
+input[type="button"],
+.entete nav a,
+thead th,
+.type-question {
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-question {
+  font-size: var(--taille-petit);
+}
+
+/* Fonds à pois retirés : un motif derrière le texte gêne la lecture */
+.connexion,
+.accueil-presentation {
+  background-image: none;
+}
+
+.accueil-presentation {
+  background-color: var(--surface-2);
+}
+
+/* En-tête toujours visible au défilement, sur grand écran seulement : sur
+   mobile, ses trois lignes cacheraient près d'un cinquième de l'écran.
+   Un élément atteint au clavier ne doit pas passer dessous (WCAG 2.4.11). */
+@media (min-width: 40rem) {
+  .entete {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  html {
+    scroll-padding-top: 5rem;
+  }
+}
+
+/* Harmonisation : toutes les pages ont la même largeur (60rem = 960 px) et
+   le même espacement vertical entre leurs blocs (lien de retour, titre,
+   cartes). D'une page à l'autre, rien ne « saute » à l'écran. */
+:root {
+  --largeur-max: 60rem;
+}
+
+.contenu {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--espace-5);
+}
+
+.contenu > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Zone de contenu (App.jsx) : cible du lien d'évitement et du focus après
+   un changement de page ; elle occupe la hauteur restante (pied de page en bas). */
+.zone-contenu {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tableau de deux colonnes : il tient sur mobile, pas besoin de largeur minimale */
+.table-conteneur .tableau-compact {
+  min-width: 0;
+}
+
+/* Ses en-têtes peuvent passer à la ligne (« Date de création » sur 320 px) */
+.tableau-compact th {
+  white-space: normal;
+}
+
+/* Titres du Markdown décalés d'un niveau (TexteCours.jsx) : « # » donne un
+   <h2>. On leur garde la taille qu'ils avaient avant le décalage. */
+.texte-cours h2,
+.apercu-markdown h2 {
+  font-size: var(--taille-h2);
+}
+
+.texte-cours h3,
+.apercu-markdown h3 {
+  font-size: var(--taille-h3);
+}
+
+.texte-cours h4,
+.apercu-markdown h4 {
+  font-size: 1.125rem;
+}
+
+/* Lien de retour précédé d'une flèche (décorative, non lue) */
+.lien-retour::before {
+  content: "← ";
+  content: "← " / "";
+}
+
+/* État vide du tableau de bord : invite claire à créer le premier cours */
+.etat-vide {
+  margin-bottom: var(--espace-5);
+  padding: var(--espace-6) var(--espace-4);
+  text-align: center;
+  background-color: var(--surface-2);
+  border: 2px dashed var(--bordure-legere);
+  border-radius: var(--rayon-grand);
+}
+
+.etat-vide p {
+  margin: 0 auto var(--espace-4);
+}
+
+/* Mot de passe + bouton « Afficher » sur la même ligne */
+.champ-mot-de-passe {
+  display: flex;
+  gap: var(--espace-2);
+  padding-bottom: var(--relief-petit);
+}
+
+.champ-mot-de-passe input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.champ-mot-de-passe button {
+  flex: none;
+  padding: var(--espace-2) var(--espace-4);
+}
+
+/* Éléments focalisés par programme (titre de page, message, confirmation) :
+   pas de contour, ce ne sont pas des éléments interactifs */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Recherche et tri de « Mes cours » : champs côte à côte sur ordinateur,
+   empilés sur mobile ; le compteur occupe toute la largeur */
+.filtres-cours {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: var(--espace-2) var(--espace-4);
+}
+
+.filtres-cours label {
+  margin-top: 0;
+}
+
+.filtres-cours p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Zone « Exporter » de la page d'un quiz */
+.zone-export h2 {
+  margin: 0 0 var(--espace-2);
+}
+
+/* Impression (et « Enregistrer au format PDF ») d'un quiz : en plus des règles
+   de la charte (section 13), on retire tout ce qui n'est pas le quiz lui-même. */
+@media print {
+  .lien-retour,
+  .aide,
+  .avertissement,
+  .info,
+  .succes,
+  .erreur,
+  .confirmation,
+  .zone-export,
+  .badge-ia {
+    display: none !important;
+  }
+
+  .contenu {
+    max-width: none;
+    padding: 0;
+  }
+}
+
+/* Mode « Tester le quiz » (PageEssaiQuiz.jsx) */
+.essai-progression {
+  display: grid;
+  gap: var(--espace-1);
+}
+
+.essai-progression progress {
+  width: 100%;
+  height: 0.625rem;
+  accent-color: var(--principale);
+}
+
+/* Choix de réponse : une tuile cliquable par ligne */
+.choix-essai {
+  display: grid;
+  gap: var(--espace-3);
+  margin: 0;
+  padding: 0 0 var(--relief-petit);
+  border: 0;
+}
+
+.choix-essai .case {
+  display: flex;
+}
+
+.essai-score {
+  font-size: var(--taille-h3);
+  font-weight: var(--graisse-forte);
+}
+
+.essai-recapitulatif li + li {
+  margin-top: var(--espace-2);
+}
+
+/* Citation du cours qui justifie une question (QuestionLecture.jsx) */
+.source-cours {
+  margin: 0;
+  font-size: var(--taille-petit);
+  border-left: 4px solid var(--principale);
+}
+
+/* Texte du logo (Logo.jsx) : suit la police et le thème de la page */
+.logo-texte {
+  font-family: var(--police);
+}
+
+.logo-nom {
+  fill: var(--texte);
+}
+
+.logo-ia {
+  fill: var(--principale-texte);
+}

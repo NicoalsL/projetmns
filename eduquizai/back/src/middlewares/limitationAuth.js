@@ -1,7 +1,16 @@
-const MESSAGE_LIMITE = { erreur: 'Trop de tentatives. Réessayez plus tard.' };
+const MESSAGE_PAR_DEFAUT = 'Trop de tentatives. Réessayez plus tard.';
 
-// Protection contre la force brute sur /api/auth : chaque adresse IP a droit
-// à "maximum" requêtes par fenêtre de temps, puis reçoit une erreur 429.
+// Par défaut, on compte par adresse IP. requete.ip ignore X-Forwarded-For par
+// défaut : un client ne peut pas contourner la limite en inventant cet en-tête.
+function cleParAdresseIp(requete) {
+  return requete.ip || requete.socket?.remoteAddress || 'inconnue';
+}
+
+// Limite le nombre de requêtes par fenêtre de temps, puis renvoie une erreur 429.
+// Deux usages :
+// - force brute sur /api/auth : compteur par adresse IP (réglage par défaut) ;
+// - coût de l'IA sur la génération de quiz : compteur par enseignant
+//   (obtenirCle lit alors l'identifiant du JWT).
 //
 // Limite connue : les compteurs sont en mémoire, donc propres à un processus
 // et remis à zéro au redémarrage. Avec plusieurs instances, il faudrait un
@@ -13,6 +22,8 @@ function creerLimiteur({
   fenetreMs = 15 * 60 * 1000,
   maximumAdresses = 10000,
   maintenant = Date.now,
+  obtenirCle = cleParAdresseIp,
+  message = MESSAGE_PAR_DEFAUT,
 } = {}) {
   // Adresse IP -> { nombre de requêtes, instant d'expiration de la fenêtre }
   const tentatives = new Map();
@@ -30,16 +41,14 @@ function creerLimiteur({
 
   function refuser(reponse, secondesAvantNouvelEssai) {
     reponse.set('Retry-After', String(secondesAvantNouvelEssai));
-    return reponse.status(429).json(MESSAGE_LIMITE);
+    return reponse.status(429).json({ erreur: message });
   }
 
   return function limiterAuthentification(requete, reponse, suite) {
     const instant = maintenant();
     nettoyer(instant);
 
-    // requete.ip ignore X-Forwarded-For par défaut : un client ne peut pas
-    // contourner la limite en inventant cet en-tête.
-    const adresse = requete.ip || requete.socket?.remoteAddress || 'inconnue';
+    const adresse = obtenirCle(requete);
 
     let compteur = tentatives.get(adresse);
     if (compteur && compteur.expiration <= instant) {

@@ -9,6 +9,8 @@
 **/.env
 **/.env.*
 !**/.env.example
+# Modèle des secrets de production (sans aucune valeur secrète)
+!**/.env.production.example
 
 # Docker
 **/*.pid
@@ -39,3 +41,6 @@ instructction/
 # caches ni l'extraction texte du CDC confidentiel)
 audit/*
 !audit/*.md
+
+# Sauvegardes des bases (données personnelles) — jamais dans Git
+**/sauvegardes/

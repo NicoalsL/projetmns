@@ -1,9 +1,14 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="clair">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Police des titres préchargée : évite le changement de police visible au premier affichage -->
+    <link rel="preload" href="/fonts/nunito-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#7048E8" />
+    <!-- data-theme="clair" sur <html> : fond blanc imposé, même si le système est en mode sombre -->
     <title>EduQuizAI — Espace enseignant</title>
   </head>
   <body>
