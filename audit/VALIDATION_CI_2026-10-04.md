@@ -32,3 +32,7 @@ des erreurs du projet mais des avis sur l'infrastructure de la CI :
 | Notice | `ubuntu-latest` passera à Ubuntu 26 à partir du 19 octobre 2026 | `runs-on: ubuntu-24.04` : environnement fixé, la CI ne change pas de système sans décision explicite |
 
 Le résultat de la CI après ce changement est consigné ci-dessous.
+
+**Résultat** : exécution `37184101413` sur le commit `74b8243` — **Success** en 1 min 58 s,
+runner `ubuntu-24.04`, **0 annotation** (plus d'avertissement Node 20 ni d'avis de migration).
+https://github.com/NicoalsL/projetmns/actions/runs/37184101413
