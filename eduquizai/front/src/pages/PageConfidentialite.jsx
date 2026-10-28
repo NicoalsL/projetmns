@@ -93,9 +93,10 @@ function PageConfidentialite() {
 
       <h2>Cookies et stockage local</h2>
       <p>
-        EduQuizAI ne dépose aucun cookie publicitaire ni de mesure d’audience. Votre jeton de connexion est
-        conservé dans le stockage local de votre navigateur pendant 2 heures au plus ; il est supprimé à la
-        déconnexion.
+        EduQuizAI ne dépose aucun cookie publicitaire ni de mesure d’audience. La connexion utilise un cookie
+        de session HttpOnly, Secure en HTTPS et SameSite=Strict, valable au maximum deux heures, ainsi qu’un
+        cookie technique anti-CSRF. Ces cookies servent uniquement à sécuriser la connexion et les actions
+        du compte. Ils sont effacés à la déconnexion. Aucun JWT n’est conservé dans localStorage.
       </p>
 
       <h2>Sécurité</h2>

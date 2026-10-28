@@ -1,4 +1,4 @@
-// Logo EduQuizAI (charte graphique, docs/charte-graphique.md) en SVG intégré :
+// Logo EduQuizAI (charte graphique, documentation/conception/charte-graphique.md) en SVG intégré :
 // contrairement à une balise <img>, il utilise la police Nunito de la page et
 // suit le thème clair / sombre grâce aux variables CSS.
 // Décoratif (aria-hidden) : le lien ou le titre qui l'entoure porte le texte.

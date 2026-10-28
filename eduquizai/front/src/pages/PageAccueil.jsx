@@ -85,7 +85,8 @@ function PageAccueil() {
         </div>
 
         {/* Exemple visuel : rendu identique à la page de relecture d'un quiz */}
-        <div aria-label="Exemple de question générée puis relue">
+        {/* role="group" : un <div> seul ne peut pas porter de nom (aria-label ignoré) */}
+        <div role="group" aria-label="Exemple de question générée puis relue">
           <QuestionLecture question={QUESTION_EXEMPLE} numero={1} />
         </div>
       </section>

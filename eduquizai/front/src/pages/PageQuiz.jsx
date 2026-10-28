@@ -151,18 +151,11 @@ function DetailQuiz({ id }) {
     }, 'Quiz validé : il peut maintenant être exporté.')
   }
 
-  // format : 'json' ou 'csv' (fichier produit par l'API, quiz validé uniquement).
+  // format : 'json', 'csv' ou 'pdf' (fichier produit par l'API, quiz validé uniquement).
   function exporter(format) {
     executerAction(async () => {
       await telechargerFichier(urlQuiz + '/export?format=' + format, 'quiz-' + id + '.' + format)
     }, 'Fichier ' + format.toUpperCase() + ' téléchargé.')
-  }
-
-  // PDF : la boîte d'impression du navigateur propose « Enregistrer au format
-  // PDF ». La feuille de style d'impression (index.css) n'imprime que le quiz,
-  // sans menus ni boutons : aucune bibliothèque PDF à charger (éco-conception).
-  function imprimer() {
-    window.print()
   }
 
   // Demande à l'IA une nouvelle question du même type pour remplacer celle-ci.
@@ -343,9 +336,9 @@ function DetailQuiz({ id }) {
                 type="button"
                 className="bouton-secondaire"
                 disabled={actionEnCours || !estValide}
-                onClick={imprimer}
+                onClick={() => exporter('pdf')}
               >
-                Imprimer ou enregistrer en PDF
+                Document PDF
               </button>
             </div>
           </section>

@@ -9,23 +9,39 @@ import PageModificationCours from './pages/PageModificationCours'
 import PageQuiz from './pages/PageQuiz'
 import PageEssaiQuiz from './pages/PageEssaiQuiz'
 import PageConfidentialite from './pages/PageConfidentialite'
+import PagePlanDuSite from './pages/PagePlanDuSite'
 import EnTete from './composants/EnTete'
-import { sessionValide, surveillerSession } from './auth/session'
+import AvertissementSession from './composants/AvertissementSession'
+import { compteDuJeton, chargerSession, obtenirSession, surveillerSession } from './auth/session'
 
 // Redirige vers la connexion si la session est absente ou expirée.
 function RouteProtegee({ enfant }) {
-  const [jeton, setJeton] = useState(() => (sessionValide() ? localStorage.getItem('jeton') : null))
+  const [jeton, setJeton] = useState(obtenirSession)
+  const [charge, setCharge] = useState(false)
 
   // surveillerSession renvoie sa fonction d'arrêt, que React appelle au démontage.
-  useEffect(() => surveillerSession(setJeton), [])
+  useEffect(() => {
+    const arreter = surveillerSession(setJeton)
+    chargerSession().finally(() => setCharge(true))
+    return arreter
+  }, [])
+
+  if (!charge) return <p role="status">Vérification de la session…</p>
 
   if (!jeton) {
     return <Navigate to="/connexion" replace state={{ sessionExpiree: true }} />
   }
 
-  // key={jeton} : si un autre compte se connecte dans un autre onglet, la page
-  // est recréée et recharge les données du nouveau compte (pas celles de l'ancien).
-  return <Fragment key={jeton}>{enfant}</Fragment>
+  // key = compte du jeton : si un autre compte se connecte dans un autre onglet,
+  // la page est recréée et recharge les données du nouveau compte (pas celles
+  // de l'ancien). Une prolongation de session garde le même compte : la page
+  // n'est pas recréée et une saisie en cours est conservée.
+  return (
+    <Fragment key={compteDuJeton()}>
+      <AvertissementSession key={jeton.expiration} jeton={jeton} />
+      {enfant}
+    </Fragment>
+  )
 }
 
 // Dans une application React, changer de page ne recharge pas le navigateur :
@@ -68,6 +84,7 @@ function App() {
           <Route path="/" element={<PageAccueil />} />
           <Route path="/connexion" element={<PageConnexion />} />
           <Route path="/confidentialite" element={<PageConfidentialite />} />
+          <Route path="/plan-du-site" element={<PagePlanDuSite />} />
           <Route path="/dashboard" element={<RouteProtegee enfant={<PageDashboard />} />} />
           <Route path="/cours/nouveau" element={<RouteProtegee enfant={<PageCreationCours />} />} />
           <Route path="/cours/:id" element={<RouteProtegee enfant={<PageDetailCours />} />} />
@@ -79,11 +96,17 @@ function App() {
         </Routes>
       </div>
 
-      {/* Pied de page présent sur toutes les pages : accès permanent aux mentions légales.
+      {/* Pied de page présent sur toutes les pages : accès permanent aux mentions légales
+          et au plan du site (second système de navigation, RGAA 12.1 et 12.4).
           NavLink signale la page courante (aria-current) quand on y est déjà. */}
       <footer className="pied-de-page">
         <p>EduQuizAI, un service SchoolUp</p>
-        <NavLink to="/confidentialite">Mentions légales et confidentialité</NavLink>
+        <nav aria-label="Liens du pied de page">
+          <ul>
+            <li><NavLink to="/confidentialite">Mentions légales et confidentialité</NavLink></li>
+            <li><NavLink to="/plan-du-site">Plan du site</NavLink></li>
+          </ul>
+        </nav>
       </footer>
     </BrowserRouter>
   )

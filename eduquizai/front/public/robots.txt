@@ -1,0 +1,7 @@
+# Référencement : les pages publiques peuvent être indexées,
+# l'API et l'espace enseignant (réservé aux comptes) ne le sont pas.
+User-agent: *
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /cours/
+Disallow: /quiz/
