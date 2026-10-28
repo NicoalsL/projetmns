@@ -1,54 +1,43 @@
-// Tests de l'en-tête : la déconnexion révoque la session sur le serveur.
-
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import appelApi from '../../src/api/client'
 import EnTete from '../../src/composants/EnTete'
+import { definirSession, sessionValide } from '../../src/auth/session'
 
 vi.mock('../../src/api/client', () => ({ default: vi.fn() }))
 
-// Jeton factice dont la date d'expiration est dans une heure : l'en-tête
-// affiche alors la navigation d'un enseignant connecté.
-function jetonValide() {
-  const contenu = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }))
-  return 'a.' + contenu.replace(/=+$/, '') + '.b'
-}
-
 beforeEach(() => {
-  localStorage.setItem('jeton', jetonValide())
+  definirSession({ id_utilisateur: 7, expiration: Date.now() + 3600000 })
 })
 
 afterEach(() => {
   cleanup()
+  definirSession(null)
   localStorage.clear()
   vi.resetAllMocks()
 })
 
 describe('EnTete', () => {
-  test('« Se déconnecter » révoque la session côté serveur puis vide la session locale', async () => {
+  test('la déconnexion demande une révocation au serveur', async () => {
     appelApi.mockResolvedValue({})
     render(<MemoryRouter><EnTete /></MemoryRouter>)
-
     await userEvent.click(screen.getByRole('button', { name: 'Se déconnecter' }))
-
     expect(appelApi).toHaveBeenCalledWith('/api/compte/deconnexion', { method: 'POST' })
-    expect(localStorage.getItem('jeton')).toBeNull()
+    expect(sessionValide()).toBe(false)
   })
 
-  test('serveur injoignable : la déconnexion locale a lieu quand même', async () => {
-    appelApi.mockRejectedValue(new Error('Impossible de joindre le serveur.'))
+  test('serveur indisponible : la déconnexion ne prétend pas être réussie', async () => {
+    appelApi.mockRejectedValue(new Error('Serveur indisponible'))
     render(<MemoryRouter><EnTete /></MemoryRouter>)
-
     await userEvent.click(screen.getByRole('button', { name: 'Se déconnecter' }))
-
-    expect(localStorage.getItem('jeton')).toBeNull()
+    expect(sessionValide()).toBe(true)
+    expect(screen.getByRole('alert').textContent).toContain('Déconnexion non confirmée')
   })
 
-  test('le logo ramène toujours à l\'accueil', () => {
+  test('le logo ramène à l’accueil', () => {
     render(<MemoryRouter><EnTete /></MemoryRouter>)
-
     expect(screen.getByRole('link', { name: 'EduQuizAI, accueil' }).getAttribute('href')).toBe('/')
   })
 })

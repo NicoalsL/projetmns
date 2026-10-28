@@ -6,7 +6,7 @@ jest.mock('../src/depots/utilisateur.depot');
 const jwt = require('jsonwebtoken');
 const utilisateurDepot = require('../src/depots/utilisateur.depot');
 const verifierJeton = require('../src/middlewares/authentification');
-const { revoquerSessions } = require('../src/services/session.service');
+const { revoquerSessions, prolongerSession } = require('../src/services/session.service');
 
 const SECRET = 'f'.repeat(64);
 
@@ -91,5 +91,20 @@ describe('revoquerSessions', () => {
     await revoquerSessions(7);
 
     expect(utilisateurDepot.incrementerVersionJeton).toHaveBeenCalledWith(7);
+  });
+});
+
+describe('prolongerSession', () => {
+  test('signe un jeton avec le même compte, le même rôle et la même version de session', () => {
+    const jeton = prolongerSession({ id_utilisateur: 7, role: 'enseignant', version: 2 });
+
+    const contenu = jwt.verify(jeton, SECRET, { algorithms: ['HS256'] });
+    expect(contenu).toMatchObject({ id_utilisateur: 7, role: 'enseignant', version: 2 });
+  });
+
+  test('un jeton sans version (émis avant la révocation) reste en version 0', () => {
+    const jeton = prolongerSession({ id_utilisateur: 7, role: 'enseignant' });
+
+    expect(jwt.decode(jeton).version).toBe(0);
   });
 });

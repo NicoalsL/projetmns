@@ -1,82 +1,68 @@
-// Gestion de la session côté navigateur (jeton JWT stocké dans localStorage).
-// Ces contrôles servent uniquement l'interface : seule l'API vérifie la
-// signature du jeton et les droits de l'utilisateur.
+// Le JWT n'est jamais exposé à React : le navigateur garde un cookie HttpOnly.
+// Les informations ci-dessous décrivent seulement l'interface (non sensibles).
+const URL_BASE = import.meta.env?.VITE_API_URL ?? '';
+let etat = null;
+let sequence = 0;
+const observateurs = new Set();
+let minuteurExpiration = null;
+function programmerExpiration() {
+  clearTimeout(minuteurExpiration);
+  if (etat?.expiration > Date.now()) {
+    minuteurExpiration = setTimeout(() => {
+      if (etat && etat.expiration <= Date.now()) fermerSession();
+      else programmerExpiration();
+    }, Math.min(etat.expiration - Date.now(), 2147483647));
+  }
+}
 
-// setTimeout ne gère pas un délai supérieur à ~24,8 jours (2^31 - 1 ms).
-const DELAI_MAX_MINUTEUR = 2147483647
+export function sessionValide() {
+  return Boolean(etat && etat.expiration > Date.now());
+}
+export function compteDuJeton() { return etat?.id_utilisateur ?? null; }
+export function tempsRestantSession() { return Math.max(0, (etat?.expiration ?? 0) - Date.now()); }
+export function obtenirSession() { return etat; }
 
-// Lit la date d'expiration ("exp", en secondes) contenue dans un JWT.
-// Un JWT = entete.contenu.signature, chaque partie encodée en base64url.
-// Renvoie la date en millisecondes, ou null si le jeton est absent ou illisible.
-function lireExpiration(jeton) {
-  if (typeof jeton !== 'string' || jeton.split('.').length !== 3) return null
+function notifier() { for (const fn of observateurs) fn(etat); }
+export function definirSession(nouvelEtat) {
+  sequence += 1;
+  etat = nouvelEtat && nouvelEtat.expiration > Date.now() ? nouvelEtat : null;
+  programmerExpiration();
+  notifier();
+  window.dispatchEvent(new Event('session-modifiee'));
+}
+export function fermerSession() { definirSession(null); }
 
+export async function chargerSession() {
+  localStorage.removeItem('jeton'); // purge de l'ancien mode de stockage
+  const requete = ++sequence;
   try {
-    // base64url -> base64 classique (seul format compris par atob), avec le
-    // remplissage "=" final que base64url supprime.
-    const base64 = jeton.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    const base64Complete = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
-    const contenu = JSON.parse(atob(base64Complete))
-
-    const expiration = contenu.exp * 1000
-    return typeof contenu.exp === 'number' && Number.isFinite(expiration) ? expiration : null
-  } catch {
-    return null
-  }
-}
-
-export function sessionValide(jeton = localStorage.getItem('jeton')) {
-  const expiration = lireExpiration(jeton)
-  return expiration !== null && expiration > Date.now()
-}
-
-// Nombre de millisecondes avant l'expiration de la session.
-export function tempsRestantSession(jeton = localStorage.getItem('jeton')) {
-  const expiration = lireExpiration(jeton)
-  return expiration === null ? 0 : Math.max(0, expiration - Date.now())
-}
-
-// Surveille la session et appelle notifier(jeton) à chaque changement :
-// notifier(null) quand la session est perdue (expiration, déconnexion).
-// Renvoie une fonction d'arrêt, à appeler au démontage du composant.
-export function surveillerSession(notifier) {
-  let minuteur
-
-  function verifier() {
-    clearTimeout(minuteur)
-    const jeton = localStorage.getItem('jeton')
-    const valide = sessionValide(jeton)
-    notifier(valide ? jeton : null)
-
-    // Un seul minuteur, reprogrammé à chaque vérification : si le jeton est
-    // renouvelé (reconnexion dans un autre onglet), l'échéance suit le nouveau.
-    if (valide) {
-      minuteur = setTimeout(verifier, Math.min(tempsRestantSession(jeton), DELAI_MAX_MINUTEUR))
+    const reponse = await fetch(URL_BASE + '/api/compte/session', { credentials: 'same-origin', cache: 'no-store' });
+    if (!reponse.ok) throw new Error('Session indisponible');
+    const donnees = await reponse.json();
+    if (requete === sequence) {
+      etat = donnees;
+      programmerExpiration();
+      notifier();
     }
+  } catch {
+    if (requete === sequence) { etat = null; programmerExpiration(); notifier(); }
   }
-
-  // L'événement "storage" n'est reçu que par les AUTRES onglets ; key === null
-  // signifie que tout le localStorage a été vidé.
-  function stockageModifie(evenement) {
-    if (evenement.key === 'jeton' || evenement.key === null) verifier()
-  }
-
-  window.addEventListener('session-expiree', verifier) // déconnexion dans cet onglet
-  window.addEventListener('storage', stockageModifie) // changement dans un autre onglet
-  window.addEventListener('focus', verifier) // retour sur l'onglet (sortie de veille)
-  verifier()
-
-  return () => {
-    clearTimeout(minuteur)
-    window.removeEventListener('session-expiree', verifier)
-    window.removeEventListener('storage', stockageModifie)
-    window.removeEventListener('focus', verifier)
-  }
+  return etat;
 }
 
-// Supprime le jeton et prévient les routes protégées pour qu'elles
-// redirigent vers la connexion.
-export function fermerSession() {
-  localStorage.removeItem('jeton')
-  window.dispatchEvent(new Event('session-expiree'))
+export function surveillerSession(notifierEtat) {
+  observateurs.add(notifierEtat);
+  notifierEtat(etat);
+  const surFocus = () => { chargerSession(); };
+  const surOnglet = (event) => { if (event.key === 'eduquizai-session-changed') chargerSession(); };
+  window.addEventListener('focus', surFocus);
+  window.addEventListener('storage', surOnglet);
+  return () => {
+    observateurs.delete(notifierEtat);
+    window.removeEventListener('focus', surFocus);
+    window.removeEventListener('storage', surOnglet);
+  };
+}
+export function signalerAutresOnglets() {
+  localStorage.setItem('eduquizai-session-changed', String(Date.now()));
 }

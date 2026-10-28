@@ -1,28 +1,41 @@
 const authService = require('../services/auth.service');
+const { deposerSession } = require('../middlewares/sessionCookie');
+const { enregistrerEchecConnexion, reinitialiserTentativesCompte } = require('../middlewares/limitationCompteConnexion');
+const { ErreurNonAuthentifie } = require('../utilitaires/erreurs');
+const { expirationJetonMs } = require('../services/auth.service');
 
-function formaterUtilisateur(utilisateur) {
-  return { id_utilisateur: utilisateur.id_utilisateur, nom: utilisateur.nom, email: utilisateur.email };
-}
+// Rôle : inscription et connexion. Traduit la requête HTTP en appel à
+// auth.service.js, puis le résultat en réponse HTTP. Aucune règle métier ici.
+// CHOIX — Contrôleur séparé du service : le service ne connaît pas HTTP,
+// on peut donc le tester (ou le réutiliser) sans serveur web.
+// Les refus (email déjà pris : 409, identifiants faux : 401) sont des erreurs
+// métier levées par le service, et traduites par gestionErreurs.js.
 
+// POST /api/auth/inscription -> 201 (compte créé) ou 409 (email déjà pris).
 async function inscription(requete, reponse, suite) {
   try {
     const { utilisateur, jeton } = await authService.inscrire(requete.body);
-    reponse.status(201).json({ utilisateur: formaterUtilisateur(utilisateur), jeton });
+    // SÉCURITÉ — Seulement le profil public : jamais l'empreinte du mot de passe
+    // (champ privé de la classe Utilisateur) ni la version de session.
+    deposerSession(reponse, jeton);
+    reponse.status(201).json({ utilisateur: utilisateur.versProfilPublic(), expiration: expirationJetonMs(jeton), id_utilisateur: utilisateur.id_utilisateur });
   } catch (erreur) {
-    if (erreur.message === 'EMAIL_DEJA_UTILISE') {
-      return reponse.status(409).json({ erreur: 'Cet email est déjà utilisé' });
-    }
-    suite(erreur);
+    suite(erreur); // confiée à gestionErreurs.js
   }
 }
 
+// POST /api/auth/connexion -> 200 avec le jeton, ou 401.
+// SÉCURITÉ — Même message si l'email est inconnu ou le mot de passe faux :
+// impossible de savoir quels emails ont un compte (voir auth.service.js).
 async function connexion(requete, reponse, suite) {
   try {
     const { utilisateur, jeton } = await authService.connecter(requete.body);
-    reponse.json({ utilisateur: formaterUtilisateur(utilisateur), jeton });
+    reinitialiserTentativesCompte(requete.body.email);
+    deposerSession(reponse, jeton);
+    reponse.json({ utilisateur: utilisateur.versProfilPublic(), expiration: expirationJetonMs(jeton), id_utilisateur: utilisateur.id_utilisateur });
   } catch (erreur) {
-    if (erreur.message === 'IDENTIFIANTS_INVALIDES') {
-      return reponse.status(401).json({ erreur: 'Email ou mot de passe incorrect' });
+    if (erreur instanceof ErreurNonAuthentifie) {
+      enregistrerEchecConnexion(requete.body.email);
     }
     suite(erreur);
   }

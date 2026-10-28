@@ -89,7 +89,7 @@ test('inscription : hache le mot de passe et renvoie un jeton signé', async () 
   // Ce qui est renvoyé au client : pas de hash, et un jeton vérifiable.
   const resultat = await reponse.json();
   expect(resultat.utilisateur).toEqual({ id_utilisateur: 7, nom: 'Alice', email: utilisateurTest.email });
-  const contenuJeton = jwt.verify(resultat.jeton, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+  const contenuJeton = jwt.verify(decodeURIComponent(reponse.headers.get('set-cookie').split(';')[0].split('=')[1]), process.env.JWT_SECRET, { algorithms: ['HS256'] });
   expect(contenuJeton.id_utilisateur).toBe(7);
   // Version de session du compte, comparée à chaque requête (révocation).
   expect(contenuJeton.version).toBe(0);

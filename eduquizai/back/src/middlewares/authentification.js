@@ -1,38 +1,54 @@
 const jwt = require('jsonwebtoken');
 const { estIdentifiantSql } = require('../utilitaires/entrees');
 const { sessionEstValide } = require('../services/session.service');
+const { cookies, NOM_SESSION } = require('./sessionCookie');
 
 const MESSAGE_JETON_REFUSE = 'Jeton invalide ou expiré';
+const { DUREE_MAX_SESSION_SECONDES } = require('../services/auth.service');
 
-// Vérifie le JWT dans l'en-tête Authorization avant d'atteindre un contrôleur
-// protégé ; injecte l'utilisateur décodé dans requete.utilisateur.
+// Rôle : laisser passer uniquement un enseignant connecté.
+// Son jeton (JWT) est vérifié en 4 étapes. Si tout est bon, son identité est
+// rangée dans requete.utilisateur. Sinon : 401, et la requête s'arrête ici.
+//
+// CHOIX — JWT plutôt qu'une session stockée sur le serveur : le serveur n'a
+// rien à mémoriser pour savoir qui est connecté (API « sans état »).
+// Point faible du JWT : on ne peut pas l'annuler avant son expiration.
+// Réponse à ce point faible : l'étape 4 (numéro de version du compte).
 async function verifierJeton(requete, reponse, suite) {
+  // 1. Jeton présent ? Format attendu : « Authorization: Bearer <jeton> ».
   const enTete = requete.headers.authorization;
-  if (!enTete || !enTete.startsWith('Bearer ')) {
+  const jetonCookie = cookies(requete)[NOM_SESSION];
+  if (!jetonCookie && (!enTete || !enTete.startsWith('Bearer '))) {
     return reponse.status(401).json({ erreur: 'Authentification requise' });
   }
 
-  const jeton = enTete.slice('Bearer '.length);
+  // 2. Jeton authentique et pas expiré ? (signature vérifiée avec le secret du serveur)
+  const jeton = enTete?.startsWith('Bearer ') ? enTete.slice('Bearer '.length) : jetonCookie; // enlève « Bearer »
   let contenu;
   try {
-    // algorithms imposé : refuse un jeton qui annoncerait un autre algorithme
-    // (ex. "none") pour contourner la vérification de signature.
+    // SÉCURITÉ — Algorithme imposé (HS256). Sinon, un faux jeton qui annonce
+    // « alg: none » (aucune signature) pourrait être accepté.
     contenu = jwt.verify(jeton, process.env.JWT_SECRET, { algorithms: ['HS256'] });
   } catch {
     return reponse.status(401).json({ erreur: MESSAGE_JETON_REFUSE });
   }
 
-  // Une signature valide ne suffit pas : le jeton doit aussi porter un
-  // identifiant utilisable dans les requêtes SQL (entier positif INTEGER).
+  const debut = contenu.debut_session ?? contenu.iat;
+  const maintenant = Math.floor(Date.now() / 1000);
+  if (!Number.isSafeInteger(debut) || debut > maintenant || maintenant >= debut + DUREE_MAX_SESSION_SECONDES) {
+    return reponse.status(401).json({ erreur: MESSAGE_JETON_REFUSE });
+  }
+
+  // 3. Identifiant valide ? (entier positif : il servira dans les requêtes SQL)
   if (!estIdentifiantSql(contenu.id_utilisateur)) {
     return reponse.status(401).json({ erreur: MESSAGE_JETON_REFUSE });
   }
 
-  // Révocation : la version de session du jeton doit être celle du compte en
-  // base. Un jeton émis avant la déconnexion, ou dont le compte a été
-  // supprimé, est refusé même s'il n'a pas expiré. Les jetons émis avant
-  // l'ajout de ce contrôle n'ont pas de version : ils comptent comme version 0.
-  const version = contenu.version ?? 0;
+  // 4. Session encore active ?
+  // Chaque compte a un numéro de version, copié dans ses jetons.
+  // Déconnexion = numéro + 1 : les anciens jetons ne correspondent plus.
+  // Compte supprimé = plus de numéro : ses jetons sont refusés aussi.
+  const version = contenu.version ?? 0; // vieux jeton sans version = version 0
   if (!Number.isInteger(version) || version < 0) {
     return reponse.status(401).json({ erreur: MESSAGE_JETON_REFUSE });
   }
@@ -41,16 +57,17 @@ async function verifierJeton(requete, reponse, suite) {
   try {
     valide = await sessionEstValide(contenu.id_utilisateur, version);
   } catch (erreur) {
-    // Base injoignable : erreur 500 générique (gestionErreurs.js), pas un 401
-    // qui déconnecterait à tort l'utilisateur.
+    // Base en panne : erreur 500 et non 401, pour ne pas déconnecter
+    // l'enseignant à cause d'une panne du serveur.
     return suite(erreur);
   }
   if (!valide) {
     return reponse.status(401).json({ erreur: MESSAGE_JETON_REFUSE });
   }
 
+  // SÉCURITÉ — L'identité vient du jeton, jamais de ce qu'envoie le navigateur.
   requete.utilisateur = contenu;
-  suite();
+  suite(); // étape suivante : validation, puis contrôleur
 }
 
 module.exports = verifierJeton;

@@ -2,48 +2,72 @@ const { randomBytes } = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const utilisateurDepot = require('../depots/utilisateur.depot');
+const Utilisateur = require('../modeles/utilisateur.modele');
+const { ErreurConflit, ErreurNonAuthentifie } = require('../utilitaires/erreurs');
 const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 
-const TOURS_HACHAGE = 10;
-const DUREE_JETON = '2h';
+// Rôle : inscription et connexion. Stocke le mot de passe de façon sûre
+// et fabrique le jeton (JWT) qui prouve qui est connecté.
 
-// Empreinte d'un mot de passe aléatoire, calculée une fois au chargement.
-// Sert à faire un vrai calcul bcrypt même quand l'email est inconnu : sinon la
-// réponse serait plus rapide (~100 ms) et révélerait quels emails ont un compte.
+// CHOIX — bcrypt plutôt que SHA-256 : SHA-256 est très rapide, donc un pirate
+// peut tester des milliards de mots de passe par seconde. bcrypt est lent
+// exprès et ajoute un « sel » (deux mots de passe identiques donnent deux
+// empreintes différentes). Version bcryptjs : 100 % JavaScript, rien à compiler.
+const TOURS_HACHAGE = 10; // 2^10 tours ≈ 100 ms par calcul : supportable pour un humain, lent pour un pirate
+
+// CHOIX — 2 h : assez pour préparer un cours, assez court pour limiter un jeton volé.
+// L'enseignant peut prolonger avant la fin (bouton « Rester connecté »).
+const DUREE_JETON_SECONDES = 2 * 60 * 60;
+const DUREE_MAX_SESSION_SECONDES = 12 * 60 * 60;
+
+function expirationJetonMs(jeton) {
+  return jwt.decode(jeton).exp * 1000;
+}
+
+// SÉCURITÉ — Empreinte d'un faux mot de passe, calculée une fois au démarrage.
+// Si l'email est inconnu, on la compare quand même : la réponse prend le même
+// temps (~100 ms), donc la durée ne trahit pas quels emails ont un compte.
 const EMPREINTE_FACTICE = bcrypt.hashSync(randomBytes(16).toString('hex'), TOURS_HACHAGE);
 
-function genererJeton(utilisateur) {
+// Fabrique le jeton remis au navigateur, signé avec le secret du serveur :
+// le moindre changement le rend invalide.
+// SÉCURITÉ — Ni mot de passe ni email dedans : un JWT est signé, pas chiffré,
+// donc tout le monde peut lire son contenu.
+function genererJeton(utilisateur, debutSession = Math.floor(Date.now() / 1000)) {
+  const maintenant = Math.floor(Date.now() / 1000);
+  const secondesRestantes = debutSession + DUREE_MAX_SESSION_SECONDES - maintenant;
+  if (secondesRestantes <= 0) throw new ErreurNonAuthentifie('Durée maximale de session atteinte. Reconnectez-vous.');
   return jwt.sign(
     {
       id_utilisateur: utilisateur.id_utilisateur,
       role: utilisateur.role,
-      // Version de session du compte : une déconnexion l'incrémente et
-      // invalide ce jeton (voir session.service.js).
       version: utilisateur.version_jeton ?? 0,
+      debut_session: debutSession, // une déconnexion l'augmente (voir session.service.js)
     },
     process.env.JWT_SECRET,
-    { expiresIn: DUREE_JETON, algorithm: 'HS256' },
+    { expiresIn: Math.min(DUREE_JETON_SECONDES, secondesRestantes), algorithm: 'HS256' },
   );
 }
 
+// Crée le compte et connecte directement l'enseignant.
+// (Données déjà vérifiées par le middleware validation.js.)
 async function inscrire({ nom, email, motDePasse }) {
   const existant = await utilisateurDepot.trouverParEmail(email);
   if (existant) {
-    throw new Error('EMAIL_DEJA_UTILISE');
+    throw new ErreurConflit('Cet email est déjà utilisé');
   }
 
-  // Le mot de passe en clair ne doit jamais atteindre la base : on ne stocke
-  // que son empreinte (hash), impossible à inverser.
+  // SÉCURITÉ — On ne stocke jamais le mot de passe, seulement son empreinte,
+  // impossible à inverser.
   const motDePasseHache = await bcrypt.hash(motDePasse, TOURS_HACHAGE);
   let utilisateur;
   try {
-    utilisateur = await utilisateurDepot.creer({ nom, email, motDePasseHache });
+    utilisateur = new Utilisateur(await utilisateurDepot.creer({ nom, email, motDePasseHache }));
   } catch (erreur) {
-    // Deux inscriptions simultanées peuvent passer toutes les deux la
-    // vérification ci-dessus : c'est alors la contrainte UNIQUE de la base
-    // qui tranche (code PostgreSQL 23505 = violation d'unicité).
+    // Deux inscriptions au même instant peuvent passer le test ci-dessus.
+    // C'est alors la base qui tranche grâce à UNIQUE (code 23505 = doublon).
     if (erreur.code === '23505' && erreur.constraint === 'utilisateur_email_key') {
-      throw new Error('EMAIL_DEJA_UTILISE');
+      throw new ErreurConflit('Cet email est déjà utilisé');
     }
     throw erreur;
   }
@@ -51,23 +75,25 @@ async function inscrire({ nom, email, motDePasse }) {
   return { utilisateur, jeton: genererJeton(utilisateur) };
 }
 
+// Vérifie l'email et le mot de passe, puis remet un jeton.
 async function connecter({ email, motDePasse }) {
-  const utilisateur = await utilisateurDepot.trouverParEmail(email);
+  const ligne = await utilisateurDepot.trouverParEmail(email);
+  const utilisateur = ligne ? new Utilisateur(ligne) : null;
 
-  // Message d'erreur volontairement identique dans les deux cas (email
-  // inconnu ou mot de passe faux) pour ne pas révéler si un email existe.
-  // Le calcul bcrypt a lieu dans les deux cas : même temps de réponse.
-  const empreinte = utilisateur ? utilisateur.mot_de_passe_hache : EMPREINTE_FACTICE;
-  const motDePasseValide = await bcrypt.compare(motDePasse, empreinte);
+  // SÉCURITÉ — Même message et même durée, que l'email soit inconnu ou le
+  // mot de passe faux : impossible de deviner qui a un compte.
+  const motDePasseValide = utilisateur
+    ? await utilisateur.motDePasseCorrespond(motDePasse)
+    : await bcrypt.compare(motDePasse, EMPREINTE_FACTICE);
   if (!utilisateur || !motDePasseValide) {
-    // Identifiant du compte visé s'il existe (null sinon) : une série d'échecs
-    // sur un même compte signale une tentative de force brute.
+    // Échec noté dans le journal de sécurité, avec le compte visé s'il existe :
+    // beaucoup d'échecs sur un même compte = attaque par force brute.
     await tracer(EVENEMENTS.CONNEXION_ECHOUEE, utilisateur ? utilisateur.id_utilisateur : null);
-    throw new Error('IDENTIFIANTS_INVALIDES');
+    throw new ErreurNonAuthentifie('Email ou mot de passe incorrect');
   }
 
   await tracer(EVENEMENTS.CONNEXION_REUSSIE, utilisateur.id_utilisateur);
   return { utilisateur, jeton: genererJeton(utilisateur) };
 }
 
-module.exports = { inscrire, connecter };
+module.exports = { inscrire, connecter, genererJeton, expirationJetonMs, DUREE_MAX_SESSION_SECONDES };

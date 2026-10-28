@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import appelApi from '../api/client'
-import { sessionValide } from '../auth/session'
+import { sessionValide, definirSession, signalerAutresOnglets } from '../auth/session'
 import { placerFocus } from '../utilitaires/focus'
 import { useTitrePage } from '../utilitaires/titrePage'
 
@@ -82,11 +82,13 @@ function PageConnexion() {
       : { email: email.trim(), motDePasse }
 
     try {
-      const { jeton } = await appelApi(chemin, { method: 'POST', body: JSON.stringify(corps) })
-      if (!sessionValide(jeton)) {
+      const session = await appelApi(chemin, { method: 'POST', body: JSON.stringify(corps) })
+      if (!session.expiration || !session.id_utilisateur) {
         throw new Error('La réponse du serveur ne contient pas de session valide.')
       }
-      localStorage.setItem('jeton', jeton)
+      localStorage.removeItem('jeton') // supprimer l'ancien JWT de la version localStorage
+      definirSession(session)
+      signalerAutresOnglets()
       navigue('/dashboard', { replace: true })
     } catch (e) {
       setErreur(e.message)
