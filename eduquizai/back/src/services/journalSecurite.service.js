@@ -1,8 +1,11 @@
 const journalSecuriteDepot = require('../depots/journalSecurite.depot');
 
-// Trace les actions sensibles dans journal_securite (OWASP A09 : sans trace,
-// une attaque par force brute ou un abus passe inaperçu).
+// Rôle : noter les actions sensibles dans la table journal_securite.
+// SÉCURITÉ — Sans trace, une attaque passe inaperçue (OWASP A09).
+// RGPD — On note seulement le type, la date et l'enseignant : ni email,
+// ni mot de passe, ni adresse IP (minimisation des données).
 
+// Les 4 événements notés (même liste que le CHECK de schema.sql).
 const EVENEMENTS = {
   CONNEXION_REUSSIE: 'connexion_reussie',
   CONNEXION_ECHOUEE: 'connexion_echouee',
@@ -10,10 +13,9 @@ const EVENEMENTS = {
   QUIZ_EXPORTE: 'quiz_exporte',
 };
 
-// idUtilisateur : null quand il est inconnu (connexion avec un email inexistant).
-// Ne lève jamais d'erreur : une panne du journal ne doit pas empêcher un
-// enseignant de se connecter ou d'exporter. L'incident est seulement signalé
-// dans les logs du serveur, sans détail sur l'utilisateur.
+// idUtilisateur = null si inconnu (connexion avec un email qui n'existe pas).
+// CHOIX — Ne plante jamais : une panne du journal ne doit pas empêcher de se
+// connecter ou d'exporter. La panne est seulement signalée dans les logs.
 async function tracer(typeEvenement, idUtilisateur = null) {
   try {
     await journalSecuriteDepot.enregistrer(typeEvenement, idUtilisateur);

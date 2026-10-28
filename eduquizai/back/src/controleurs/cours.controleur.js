@@ -1,9 +1,12 @@
 const coursService = require('../services/cours.service');
 
-// Traduit les requêtes HTTP sur les cours en appels à cours.service.js.
-// L'identifiant de l'enseignant vient toujours du JWT (requete.utilisateur),
-// déposé par le middleware d'authentification.
+// Rôle : traduire les requêtes HTTP sur les cours en appels à cours.service.js.
+// L'enseignant vient toujours du jeton (requete.utilisateur), posé par le
+// middleware d'authentification.
+// Même modèle partout : appeler le service, répondre ; en cas d'erreur, la
+// confier à gestionErreurs.js avec suite(erreur).
 
+// POST /api/cours
 async function creer(requete, reponse, suite) {
   try {
     const cours = await coursService.creer(requete.body, requete.utilisateur.id_utilisateur);
@@ -14,6 +17,7 @@ async function creer(requete, reponse, suite) {
   }
 }
 
+// GET /api/cours : seulement les cours de l'enseignant connecté.
 async function lister(requete, reponse, suite) {
   try {
     const cours = await coursService.lister(requete.utilisateur.id_utilisateur);
@@ -23,6 +27,7 @@ async function lister(requete, reponse, suite) {
   }
 }
 
+// GET /api/cours/:id (404 si le cours n'existe pas OU est à un autre enseignant).
 async function consulter(requete, reponse, suite) {
   try {
     const cours = await coursService.consulter(requete.idCours, requete.utilisateur.id_utilisateur);
@@ -32,6 +37,7 @@ async function consulter(requete, reponse, suite) {
   }
 }
 
+// PUT /api/cours/:id
 async function modifier(requete, reponse, suite) {
   try {
     const cours = await coursService.modifier(requete.idCours, requete.utilisateur.id_utilisateur, requete.body);
@@ -41,6 +47,7 @@ async function modifier(requete, reponse, suite) {
   }
 }
 
+// DELETE /api/cours/:id
 async function supprimer(requete, reponse, suite) {
   try {
     await coursService.supprimer(requete.idCours, requete.utilisateur.id_utilisateur);

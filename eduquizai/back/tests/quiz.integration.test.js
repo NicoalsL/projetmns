@@ -74,7 +74,8 @@ function appeler(chemin, { method = 'GET', corps, idUtilisateur = ID_ENSEIGNANT,
   return fetch(urlBase + chemin, {
     method,
     headers: enTetes,
-    body: corpsEnvoye === undefined ? undefined : JSON.stringify(corpsEnvoye),
+    // Pas de corps du tout pour un GET (seulement pour POST, PUT…).
+    ...(corpsEnvoye === undefined ? {} : { body: JSON.stringify(corpsEnvoye) }),
   });
 }
 
@@ -473,6 +474,26 @@ describe('consultation, modification, validation, export et suppression', () => 
     expect(reponse.headers.get('content-type')).toContain('text/csv');
     expect(reponse.headers.get('content-disposition')).toContain('quiz-' + ID_QUIZ + '.csv');
     expect(await reponse.text()).toContain('"Numéro";"Type";"Énoncé"');
+  });
+
+  test('l\'export PDF d\'un quiz validé est un document PDF en pièce jointe', async () => {
+    quizDepot.trouverParId.mockResolvedValue({ ...quizBrouillon, statut: 'valide', date_validation: '2026-10-03' });
+
+    const reponse = await appeler('/api/quiz/' + ID_QUIZ + '/export?format=pdf');
+
+    expect(reponse.status).toBe(200);
+    expect(reponse.headers.get('content-type')).toContain('application/pdf');
+    expect(reponse.headers.get('content-disposition')).toContain('quiz-' + ID_QUIZ + '.pdf');
+    const fichier = Buffer.from(await reponse.arrayBuffer());
+    expect(fichier.subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  test('l\'export PDF d\'un brouillon est refusé (409), comme les autres formats', async () => {
+    quizDepot.trouverParId.mockResolvedValue(quizBrouillon);
+
+    const reponse = await appeler('/api/quiz/' + ID_QUIZ + '/export?format=pdf');
+
+    expect(reponse.status).toBe(409);
   });
 
   test('un format d\'export inconnu est refusé (400) avant toute lecture du quiz', async () => {

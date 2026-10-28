@@ -4,22 +4,26 @@ const creerLimiteur = require('../middlewares/limitationAuth');
 const { validerSuppressionCompte } = require('../middlewares/validation');
 const compteControleur = require('../controleurs/compte.controleur');
 
-// Endpoints /api/compte : actions sur le compte de l'enseignant connecté.
+// Rôle : adresses /api/compte, actions sur le compte de l'enseignant connecté.
 const routeur = express.Router();
 
-// La suppression redemande le mot de passe : on limite les essais pour
-// qu'un jeton volé ne permette pas de le deviner par force brute.
+// SÉCURITÉ — Supprimer son compte redemande le mot de passe. On limite les essais
+// (5 par quart d'heure et par compte) : un voleur de jeton ne peut pas deviner
+// le mot de passe en essayant des milliers de combinaisons.
 const limiteurConfirmation = creerLimiteur({
   maximum: 5,
   fenetreMs: 15 * 60 * 1000,
   obtenirCle: (requete) => 'compte-' + requete.utilisateur.id_utilisateur,
 });
 
-routeur.use(verifierJeton);
-routeur.use(express.json({ limit: '16kb' }));
+routeur.use(verifierJeton); // toutes ces routes exigent d'être connecté
+routeur.use(express.json({ limit: '16kb' })); // corps de requête petit : 16 ko maximum
 
-routeur.delete('/', limiteurConfirmation, validerSuppressionCompte, compteControleur.supprimer);
-// Déconnexion côté serveur : tous les jetons du compte sont révoqués.
+routeur.delete('/', limiteurConfirmation, validerSuppressionCompte, compteControleur.supprimer); // supprimer son compte
+// Se déconnecter : révoque TOUS les jetons du compte, sur tous les appareils.
 routeur.post('/deconnexion', compteControleur.deconnecter);
+// Prolonger la session avant qu'elle n'expire (bouton « Rester connecté » du site).
+routeur.get('/session', compteControleur.etatSession);
+routeur.post('/session', compteControleur.prolonger);
 
 module.exports = routeur;

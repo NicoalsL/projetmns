@@ -1,96 +1,98 @@
-const pool = require('../config/postgres');
+const DepotPostgres = require('./depotPostgres');
 
-// Seul fichier qui parle SQL pour la table cours (PostgreSQL).
-// Toutes les requêtes sont paramétrées ($1, $2…) : les valeurs ne sont jamais
-// concaténées dans le SQL, ce qui empêche l'injection SQL.
+// Rôle : seul fichier qui écrit du SQL pour la table cours (PostgreSQL).
+// Classe fille de DepotPostgres : elle hérite de executer(), trouverUne(),
+// trouverToutes() et avecTransaction(), et n'écrit que ses propres requêtes.
+// SÉCURITÉ — Requêtes paramétrées ($1, $2…) : voir depotPostgres.js.
 
-async function creer({ titre, contenuTexte, idUtilisateur }) {
-  const resultat = await pool.query(
-    `INSERT INTO cours (titre, contenu_texte, id_utilisateur)
-     VALUES ($1, $2, $3)
-     RETURNING id_cours, titre, contenu_texte, date_creation`,
-    [titre, contenuTexte, idUtilisateur],
-  );
-  return resultat.rows[0];
-}
+// Signal interne : le cours a disparu pendant la transaction (on annule tout).
+class CoursAbsent extends Error {}
 
-// La liste ne charge pas contenu_texte (jusqu'à 50 000 caractères par cours) :
-// le texte complet n'est lu que sur la page de détail (éco-conception).
-async function lister(idUtilisateur) {
-  const resultat = await pool.query(
-    `SELECT id_cours, titre, date_creation
-     FROM cours
-     WHERE id_utilisateur = $1
-     ORDER BY date_creation DESC, id_cours DESC`,
-    [idUtilisateur],
-  );
-  return resultat.rows;
-}
+class CoursDepot extends DepotPostgres {
+  // Crée un cours. RETURNING renvoie la ligne créée, sans deuxième requête.
+  creer({ titre, contenuTexte, idUtilisateur }) {
+    return this.trouverUne(
+      `INSERT INTO cours (titre, contenu_texte, id_utilisateur)
+       VALUES ($1, $2, $3)
+       RETURNING id_cours, titre, contenu_texte, date_creation`,
+      [titre, contenuTexte, idUtilisateur],
+    );
+  }
 
-// Le filtre sur id_utilisateur fait partie de la requête : impossible de lire
-// le cours d'un autre enseignant, même en devinant son identifiant.
-async function trouverParId(idCours, idUtilisateur) {
-  const resultat = await pool.query(
-    `SELECT id_cours, titre, contenu_texte, date_creation
-     FROM cours
-     WHERE id_cours = $1 AND id_utilisateur = $2`,
-    [idCours, idUtilisateur],
-  );
-  return resultat.rows[0] || null;
-}
+  // La liste ne charge pas le texte (jusqu'à 50 000 caractères par cours) :
+  // il est lu seulement sur la page du cours (éco-conception).
+  lister(idUtilisateur) {
+    return this.trouverToutes(
+      `SELECT id_cours, titre, date_creation
+       FROM cours
+       WHERE id_utilisateur = $1
+       ORDER BY date_creation DESC, id_cours DESC`,
+      [idUtilisateur],
+    );
+  }
 
-// Modification : le filtre sur le propriétaire est dans la requête UPDATE
-// elle-même. Renvoie le cours modifié, ou null s'il n'existe pas pour cet
-// enseignant (aucune ligne touchée).
-async function mettreAJour(idCours, idUtilisateur, { titre, contenuTexte }) {
-  const resultat = await pool.query(
-    `UPDATE cours
-     SET titre = $1, contenu_texte = $2
-     WHERE id_cours = $3 AND id_utilisateur = $4
-     RETURNING id_cours, titre, contenu_texte, date_creation`,
-    [titre, contenuTexte, idCours, idUtilisateur],
-  );
-  return resultat.rows[0] || null;
-}
-
-// Vérification du propriétaire et suppression dans une seule requête
-// atomique : aucun intervalle entre "vérifier" et "supprimer".
-async function supprimer(idCours, idUtilisateur) {
-  const resultat = await pool.query(
-    `DELETE FROM cours
-     WHERE id_cours = $1 AND id_utilisateur = $2
-     RETURNING id_cours`,
-    [idCours, idUtilisateur],
-  );
-  return resultat.rowCount === 1;
-}
-
-// Une écriture Mongo commence seulement si le cours est encore présent.
-// DELETE (y compris la cascade du compte) attend la fin de cette transaction.
-// L'appel IA reste hors verrou : on ne bloque pas le cours pendant sa génération.
-async function avecCoursVerrouille(idCours, idUtilisateur, action) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const resultat = await client.query(
-      `SELECT id_cours FROM cours
-       WHERE id_cours = $1 AND id_utilisateur = $2 FOR UPDATE`,
+  // SÉCURITÉ — « AND id_utilisateur = $2 » DANS la requête : impossible de lire
+  // le cours d'un autre, même en devinant son numéro.
+  trouverParId(idCours, idUtilisateur) {
+    return this.trouverUne(
+      `SELECT id_cours, titre, contenu_texte, date_creation
+       FROM cours
+       WHERE id_cours = $1 AND id_utilisateur = $2`,
       [idCours, idUtilisateur],
     );
-    if (resultat.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return null;
-    }
+  }
 
-    const valeur = await action(client);
-    await client.query('COMMIT');
-    return valeur;
-  } catch (erreur) {
-    await client.query('ROLLBACK');
-    throw erreur;
-  } finally {
-    client.release();
+  // Modifie un cours (propriétaire vérifié dans la requête).
+  // Renvoie le cours modifié, ou null s'il n'est pas à cet enseignant.
+  mettreAJour(idCours, idUtilisateur, { titre, contenuTexte }) {
+    return this.trouverUne(
+      `UPDATE cours
+       SET titre = $1, contenu_texte = $2
+       WHERE id_cours = $3 AND id_utilisateur = $4
+       RETURNING id_cours, titre, contenu_texte, date_creation`,
+      [titre, contenuTexte, idCours, idUtilisateur],
+    );
+  }
+
+  // Vérifier le propriétaire ET supprimer en une seule requête : aucun
+  // moment entre les deux où quelque chose pourrait changer.
+  async supprimer(idCours, idUtilisateur) {
+    const resultat = await this.executer(
+      `DELETE FROM cours
+       WHERE id_cours = $1 AND id_utilisateur = $2
+       RETURNING id_cours`,
+      [idCours, idUtilisateur],
+    );
+    return resultat.rowCount === 1;
+  }
+
+  // Transaction qui « verrouille » le cours (FOR UPDATE) pendant une action.
+  // Image : on pose la main sur la ligne du cours ; personne ne peut la supprimer
+  // tant qu'on ne l'a pas relâchée (COMMIT ou ROLLBACK).
+  // Sert à écrire un quiz dans MongoDB seulement si le cours existe encore.
+  // Renvoie le résultat de l'action, ou null si le cours n'existe plus.
+  async avecCoursVerrouille(idCours, idUtilisateur, action) {
+    try {
+      return await this.avecTransaction(async (client) => {
+        const resultat = await this.executer(
+          `SELECT id_cours FROM cours
+           WHERE id_cours = $1 AND id_utilisateur = $2 FOR UPDATE`,
+          [idCours, idUtilisateur],
+          client,
+        );
+        if (resultat.rows.length === 0) {
+          throw new CoursAbsent(); // cours absent ou pas à lui : la transaction est annulée
+        }
+        return action(client);
+      });
+    } catch (erreur) {
+      if (erreur instanceof CoursAbsent) {
+        return null;
+      }
+      throw erreur;
+    }
   }
 }
 
-module.exports = { creer, lister, trouverParId, mettreAJour, supprimer, avecCoursVerrouille };
+// Une seule instance, partagée par toute l'application.
+module.exports = new CoursDepot();

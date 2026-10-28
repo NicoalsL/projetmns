@@ -1,20 +1,27 @@
-const pool = require('../config/postgres');
+const DepotPostgres = require('./depotPostgres');
 
-// File durable alimentée dans la transaction SQL qui supprime le cours.
-// Elle ne contient que les identifiants nécessaires à l'effacement MongoDB.
-async function lister() {
-  const resultat = await pool.query(
-    `SELECT id_cours, id_utilisateur FROM nettoyage_quiz
-     ORDER BY date_demande LIMIT 100`,
-  );
-  return resultat.rows;
+// Rôle : seul fichier SQL pour la table nettoyage_quiz, la liste des quiz
+// MongoDB à effacer (voir services/nettoyageQuiz.service.js).
+// Classe fille de DepotPostgres.
+
+class NettoyageQuizDepot extends DepotPostgres {
+  // Les 100 plus anciennes demandes (remplies par le déclencheur SQL).
+  // Seulement les identifiants utiles pour effacer dans MongoDB.
+  lister() {
+    return this.trouverToutes(
+      `SELECT id_cours, id_utilisateur FROM nettoyage_quiz
+       ORDER BY date_demande LIMIT 100`,
+    );
+  }
+
+  // Demande traitée : on la retire de la file.
+  async terminer(idCours, idUtilisateur) {
+    await this.executer(
+      'DELETE FROM nettoyage_quiz WHERE id_cours = $1 AND id_utilisateur = $2',
+      [idCours, idUtilisateur],
+    );
+  }
 }
 
-async function terminer(idCours, idUtilisateur) {
-  await pool.query(
-    'DELETE FROM nettoyage_quiz WHERE id_cours = $1 AND id_utilisateur = $2',
-    [idCours, idUtilisateur],
-  );
-}
-
-module.exports = { lister, terminer };
+// Une seule instance, partagée par toute l'application.
+module.exports = new NettoyageQuizDepot();

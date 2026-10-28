@@ -2,44 +2,47 @@ const { genererQuiz, evaluerReponse } = require('../ia/genererQuiz');
 const coursDepot = require('../depots/cours.depot');
 const quizDepot = require('../depots/quiz.depot');
 const generationIaDepot = require('../depots/generationIa.depot');
-const { erreurMetier } = require('../utilitaires/erreurs');
+const Cours = require('../modeles/cours.modele');
+const Quiz = require('../modeles/quiz.modele');
+const {
+  ErreurConflit,
+  ErreurDonneesInvalides,
+  ErreurIntrouvable,
+  ErreurServiceIa,
+} = require('../utilitaires/erreurs');
 const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 
-// Orchestre la génération (ia/genererQuiz.js), l'édition, la validation et
-// l'export d'un quiz — appelle depots/quiz.depot.js et depots/generationIa.depot.js.
+// Rôle : le cœur métier du projet. Générer (via ia/genererQuiz.js), modifier,
+// valider, exporter un quiz.
+// Chaque fonction vérifie d'abord que le quiz (ou le cours) est à l'enseignant
+// connecté : sinon 404, comme s'il n'existait pas.
 //
-// Cycle de vie (contrainte "Éthique" du CDC) : un quiz généré naît en
-// "brouillon" ; l'enseignant le relit, le corrige, puis le "valide". Seul un
-// quiz validé peut être exporté, et toute modification le repasse en brouillon.
+// Cycle de vie : brouillon -> l'enseignant relit et corrige -> validé -> export.
+// Toute modification le remet en brouillon.
+// CHOIX — Validation humaine obligatoire (« Éthique » du CDC) : l'IA peut se
+// tromper, l'enseignant reste responsable de ce qu'il distribue.
+// CHOIX — POO : les règles propres à un cours ou à un quiz sont dans leurs classes
+// (modeles/cours.modele.js, modeles/quiz.modele.js) ; ce service orchestre :
+// il vérifie la propriété, appelle l'IA et les dépôts, et lève les erreurs métier.
 
-const STATUT_BROUILLON = 'brouillon';
-const STATUT_VALIDE = 'valide';
-
-// Contenu minimal pour générer un quiz. Testé : avec un cours de deux mots,
-// le modèle invente des questions hors cours (noyau, mitochondries…) faute de
-// matière. Ces seuils réduisent le risque, sans garantir la fidélité au cours.
-const LONGUEUR_MIN_COURS = 300;
-const PHRASES_MIN_COURS = 3;
-
-// Une "phrase" = un segment terminé par . ! ? ou un retour à la ligne, et
-// contenant au moins 3 mots (un titre isolé ou "La cellule." ne compte pas).
-function nombreDePhrases(texte) {
-  return texte
-    .split(/[.!?\n]+/)
-    .filter((phrase) => phrase.trim().split(/\s+/).length >= 3)
-    .length;
+function normaliserPourCitation(texte) {
+  return texte.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
+// Erreurs réutilisées : 404 (absent ou pas à lui) et 409 (conflit de version).
 function quizIntrouvable() {
-  return erreurMetier('Quiz introuvable', 404);
+  return new ErreurIntrouvable('Quiz introuvable');
 }
 
 function conflitRevision() {
-  return erreurMetier('Ce quiz a changé dans un autre onglet. Rechargez-le avant de continuer.', 409);
+  return new ErreurConflit('Ce quiz a changé dans un autre onglet. Rechargez-le avant de continuer.');
 }
 
-// Le parent est verrouillé seulement pendant la persistance, jamais pendant
-// l'IA. Une suppression concurrente attend alors la dernière écriture Mongo.
+// Enregistre le quiz produit par l'IA en « bloquant » le cours pendant l'écriture.
+// Pourquoi ? Si le cours est supprimé au même moment, la suppression attend :
+// pas de quiz « orphelin » sans cours.
+// Le blocage dure seulement l'écriture, jamais l'appel à l'IA (plusieurs secondes).
 async function enregistrerResultat(idCours, idUtilisateur, generation, action) {
   try {
     const resultat = await coursDepot.avecCoursVerrouille(idCours, idUtilisateur, async (client) => {
@@ -48,60 +51,62 @@ async function enregistrerResultat(idCours, idUtilisateur, generation, action) {
       return quiz;
     });
     if (!resultat) {
-      throw erreurMetier('Ce cours a été supprimé pendant la génération.', 404);
+      throw new ErreurIntrouvable('Ce cours a été supprimé pendant la génération.');
     }
     return resultat;
   } catch (erreur) {
     try {
       await generationIaDepot.marquerLivraison(generation.id_generation, idUtilisateur, 'echec');
     } catch (erreurJournal) {
-      // Si le compte/cours est supprimé, le journal suit déjà la cascade SQL.
+      // Compte ou cours supprimé : la ligne du journal a déjà disparu (cascade SQL).
       console.error('État de livraison indisponible', { code: erreurJournal.code });
     }
     throw erreur;
   }
 }
 
-// La requête Mongo filtre à la fois le propriétaire et la révision attendue.
+// Verrou optimiste : on écrit seulement si le quiz est encore dans la version
+// lue par l'enseignant. Sinon (modifié dans un autre onglet) -> 409, recharger.
+// CHOIX — « Optimiste » : on ne bloque rien à l'avance, on vérifie au moment
+// d'écrire. Simple, et les conflits sont rares (un seul enseignant par quiz).
 async function modifierVersion(idQuiz, idUtilisateur, modifications, revision) {
   const resultat = await quizDepot.mettreAJour(idQuiz, idUtilisateur, modifications, revision);
   if (!resultat) {
     const existe = await quizDepot.trouverParId(idQuiz, idUtilisateur);
     throw existe ? conflitRevision() : quizIntrouvable();
   }
-  return resultat;
+  return new Quiz(resultat);
 }
 
-// Vérifie que le cours existe ET appartient à l'enseignant (sinon 404).
+// Vérifie que le cours existe ET appartient à l'enseignant (sinon 404),
+// et le renvoie sous forme d'objet Cours.
 async function coursDeLEnseignant(idCours, idUtilisateur) {
-  const cours = await coursDepot.trouverParId(idCours, idUtilisateur);
-  if (!cours) {
-    throw erreurMetier('Cours introuvable', 404);
+  const ligne = await coursDepot.trouverParId(idCours, idUtilisateur);
+  if (!ligne) {
+    throw new ErreurIntrouvable('Cours introuvable');
   }
-  return cours;
+  return new Cours(ligne);
 }
 
-// Appelle l'IA (fonction appel), chronomètre l'appel et le trace dans le
-// journal generation_ia, réussi ou non. Partagé par la génération d'un quiz
-// et la régénération d'une question.
+// Appelle l'IA, chronomètre l'appel et le note dans le journal generation_ia
+// (réussi ou non). Sert à la génération d'un quiz et d'une seule question.
 async function appelerIaJournalisee(journal, appel, messageEchec) {
-  // On ne chronomètre que l'appel à l'IA : c'est lui que vise le critère < 5 s.
+  // On chronomètre seulement l'IA : c'est elle que vise le critère « < 5 s » du CDC.
   const debut = Date.now();
   let resultat;
   try {
     resultat = await appel();
   } catch (erreur) {
-    // L'échec est tracé (statut, durée), puis l'utilisateur reçoit un message
-    // générique : le détail technique reste dans les logs du serveur.
+    // Échec noté (statut, durée). L'utilisateur reçoit un message simple ;
+    // le détail technique reste dans les logs du serveur.
     console.error('Échec de génération IA', { code: erreur.code });
     try {
       await generationIaDepot.enregistrer({ ...journal, statut: 'echec', dureeMs: Date.now() - debut });
     } catch (erreurJournal) {
-      // Une panne du journal ne doit pas masquer l'échec de l'IA, qui reste
-      // l'erreur renvoyée à l'utilisateur.
+      // Une panne du journal ne doit pas cacher l'échec de l'IA.
       console.error('Journal des générations indisponible', { code: erreurJournal.code });
     }
-    throw erreurMetier(messageEchec, 502);
+    throw new ErreurServiceIa(messageEchec);
   }
   const dureeMs = Date.now() - debut;
 
@@ -109,28 +114,30 @@ async function appelerIaJournalisee(journal, appel, messageEchec) {
   try {
     generation = await generationIaDepot.enregistrer({ ...journal, statut: 'succes', dureeMs });
   } catch (erreur) {
-    // 23503 = clé étrangère violée : le cours a été supprimé pendant l'appel à l'IA.
+    // 23503 = clé étrangère violée : le cours a été supprimé pendant l'appel.
     if (erreur.code === '23503') {
-      throw erreurMetier('Ce cours a été supprimé pendant la génération.', 404);
+      throw new ErreurIntrouvable('Ce cours a été supprimé pendant la génération.');
     }
     throw erreur;
   }
   return { resultat, dureeMs, generation };
 }
 
+// Génère un quiz à partir d'un cours, en 4 étapes :
+// 1. le cours est-il à l'enseignant ? 2. assez long ? 3. appel à l'IA ;
+// 4. enregistrement en « brouillon ».
 // parametres : { nombreQuestions, types, niveau, difficulte } (déjà validés).
 async function generer(idCours, idUtilisateur, parametres) {
   const cours = await coursDeLEnseignant(idCours, idUtilisateur);
 
-  // Refusé AVANT d'appeler l'IA : pas de coût, pas d'entrée dans le journal.
-  const texte = cours.contenu_texte;
-  if (texte.length < LONGUEUR_MIN_COURS || nombreDePhrases(texte) < PHRASES_MIN_COURS) {
-    throw erreurMetier(
-      `Le cours est trop court pour générer un quiz fiable : au moins ${LONGUEUR_MIN_COURS} caractères `
-        + `et ${PHRASES_MIN_COURS} phrases sont nécessaires, sinon l'IA risque d'inventer des questions.`,
-      400,
+  // Refusé AVANT d'appeler l'IA : aucun coût. La règle est portée par le cours.
+  if (!cours.estAssezLongPourUnQuiz()) {
+    throw new ErreurDonneesInvalides(
+      `Le cours est trop court pour générer un quiz fiable : au moins ${Cours.LONGUEUR_MIN_POUR_QUIZ} caractères `
+        + `et ${Cours.PHRASES_MIN_POUR_QUIZ} phrases sont nécessaires, sinon l'IA risque d'inventer des questions.`,
     );
   }
+  const texte = cours.contenu_texte;
 
   const { nombreQuestions, types, niveau, difficulte } = parametres;
   const journal = { nombreQuestionsDemandees: nombreQuestions, idUtilisateur, idCours };
@@ -146,10 +153,10 @@ async function generer(idCours, idUtilisateur, parametres) {
     id_cours: idCours,
     id_utilisateur: idUtilisateur,
     titre: 'Quiz – ' + cours.titre.slice(0, 180),
-    statut: STATUT_BROUILLON,
+    statut: Quiz.STATUT_BROUILLON,
     fournisseur: resultat.fournisseur,
     modele: resultat.modele,
-    // Paramètres conservés : l'interface signale si l'IA n'a pas respecté la répartition.
+    // Gardés pour que l'interface signale si l'IA n'a pas respecté la répartition.
     parametres: { types, niveau, difficulte, repartition_demandee: resultat.repartition },
     questions: resultat.questions,
     date_creation: maintenant,
@@ -157,9 +164,10 @@ async function generer(idCours, idUtilisateur, parametres) {
     date_validation: null,
   }));
 
-  return { ...quiz, duree_ms: dureeMs };
+  return new Quiz({ ...quiz, duree_ms: dureeMs });
 }
 
+// Les quiz d'un cours (le cours doit appartenir à l'enseignant).
 async function listerPourCours(idCours, idUtilisateur) {
   await coursDeLEnseignant(idCours, idUtilisateur);
   return quizDepot.listerParCours(idCours, idUtilisateur);
@@ -171,13 +179,16 @@ async function historiqueGenerations(idCours, idUtilisateur) {
   return generationIaDepot.listerParCours(idCours, idUtilisateur);
 }
 
+// Lit un quiz de l'enseignant. Appelée au début de presque toutes les fonctions
+// suivantes : c'est le contrôle de propriété commun.
 async function consulter(idQuiz, idUtilisateur) {
-  const quiz = await quizDepot.trouverParId(idQuiz, idUtilisateur);
-  if (!quiz) {
+  const document = await quizDepot.trouverParId(idQuiz, idUtilisateur);
+  if (!document) {
     throw quizIntrouvable();
   }
-  // Les documents en attente d'effacement ne doivent plus être accessibles,
-  // même avec un JWT encore signé après la suppression du compte.
+  const quiz = new Quiz(document);
+  // SÉCURITÉ — Le cours doit exister encore : un quiz en attente d'effacement
+  // ne doit plus être lisible, même avec un ancien jeton.
   const cours = await coursDepot.trouverParId(quiz.id_cours, idUtilisateur);
   if (!cours) {
     throw quizIntrouvable();
@@ -185,17 +196,24 @@ async function consulter(idQuiz, idUtilisateur) {
   return quiz;
 }
 
-// Les questions arrivent déjà vérifiées par le middleware validationQuiz.js.
+// Enregistre les corrections de l'enseignant (déjà vérifiées par validationQuiz.js).
 async function modifier(idQuiz, idUtilisateur, { titre, questions }, revision) {
   const existant = await consulter(idQuiz, idUtilisateur);
+  const cours = await coursDeLEnseignant(existant.id_cours, idUtilisateur);
+  const texteCours = normaliserPourCitation(cours.contenu_texte);
+  const questionsVerifiees = questions.map((question) => {
+    if (!question.source) return question;
+    const citation = normaliserPourCitation(question.source);
+    return { ...question, source_trouvee: Boolean(citation && texteCours.includes(citation)) };
+  });
   const quiz = await coursDepot.avecCoursVerrouille(existant.id_cours, idUtilisateur, () => modifierVersion(
     idQuiz,
     idUtilisateur,
     {
       titre,
-      questions,
-      // Un contenu modifié n'a pas été relu dans sa version finale : retour en brouillon.
-      statut: STATUT_BROUILLON,
+      questions: questionsVerifiees,
+      // Contenu modifié = pas encore relu dans sa version finale : retour en brouillon.
+      statut: Quiz.STATUT_BROUILLON,
       date_validation: null,
       date_modification: new Date(),
     },
@@ -207,14 +225,14 @@ async function modifier(idQuiz, idUtilisateur, { titre, questions }, revision) {
   return quiz;
 }
 
-// La validation ne touche pas date_modification : le contenu n'a pas changé
-// (l'interface s'en sert pour savoir si l'enseignant a modifié le quiz).
+// L'enseignant confirme avoir relu : le quiz passe « validé » et devient exportable.
+// date_modification ne bouge pas : le contenu, lui, n'a pas changé.
 async function valider(idQuiz, idUtilisateur, revision) {
   const existant = await consulter(idQuiz, idUtilisateur);
   const quiz = await coursDepot.avecCoursVerrouille(existant.id_cours, idUtilisateur, () => modifierVersion(
     idQuiz,
     idUtilisateur,
-    { statut: STATUT_VALIDE, date_validation: new Date() },
+    { statut: Quiz.STATUT_VALIDE, date_validation: new Date() },
     revision,
   ));
   if (!quiz) {
@@ -223,45 +241,27 @@ async function valider(idQuiz, idUtilisateur, revision) {
   return quiz;
 }
 
-// Origine du contenu, affichée dans l'export par transparence.
-function libelleOrigine(quiz) {
-  if (quiz.fournisseur === 'simulation') return 'simulation (sans IA)';
-  if (quiz.fournisseur === 'ollama') return `IA locale Ollama (${quiz.modele})`;
-  return `IA OpenAI (${quiz.modele})`;
-}
-
-// Contenu du fichier JSON exporté : uniquement les données utiles à
-// l'enseignant, sans identifiants techniques internes.
+// Prépare le contenu exporté (le contrôleur le convertit en CSV ou PDF si besoin).
+// Refusé (409) tant que le quiz n'est pas validé : la règle est portée par le quiz.
 async function exporter(idQuiz, idUtilisateur) {
   const quiz = await consulter(idQuiz, idUtilisateur);
-  if (quiz.statut !== STATUT_VALIDE) {
-    throw erreurMetier('Validez le quiz après l\'avoir relu avant de l\'exporter.', 409);
+  if (!quiz.estExportable()) {
+    throw new ErreurConflit('Validez le quiz après l\'avoir relu avant de l\'exporter.');
   }
   await tracer(EVENEMENTS.QUIZ_EXPORTE, idUtilisateur);
-  return {
-    titre: quiz.titre,
-    date_validation: quiz.date_validation,
-    genere_par: libelleOrigine(quiz),
-    // source_trouvee sert à la relecture dans l'interface : inutile dans le fichier.
-    questions: quiz.questions.map((question) => {
-      const copie = { ...question };
-      delete copie.source_trouvee;
-      return copie;
-    }),
-  };
+  return quiz.contenuExport();
 }
 
-// Remplace UNE question par une nouvelle, générée par l'IA à partir du même
-// cours, du même type et avec les mêmes paramètres. Le quiz repasse en
-// brouillon : la nouvelle question doit être relue comme les autres.
+// Remplace UNE question par une nouvelle (même cours, même type, mêmes réglages).
+// Le quiz repasse en brouillon : la nouvelle question doit être relue.
 async function regenererQuestion(idQuiz, idUtilisateur, numero, revision) {
   const quiz = await consulter(idQuiz, idUtilisateur);
   if ((quiz.revision ?? 0) !== revision) {
     throw conflitRevision();
   }
-  const ancienneQuestion = quiz.questions[numero];
+  const ancienneQuestion = quiz.question(numero);
   if (!ancienneQuestion) {
-    throw erreurMetier('Question introuvable', 404);
+    throw new ErreurIntrouvable('Question introuvable');
   }
   const cours = await coursDeLEnseignant(quiz.id_cours, idUtilisateur);
   const parametres = quiz.parametres ?? {};
@@ -274,7 +274,7 @@ async function regenererQuestion(idQuiz, idUtilisateur, numero, revision) {
       types: [ancienneQuestion.type],
       niveau: parametres.niveau ?? null,
       difficulte: parametres.difficulte ?? 'moyen',
-      // L'IA reçoit la liste des énoncés existants pour ne pas les reproduire.
+      // Les questions existantes, pour que l'IA ne les répète pas.
       questionsAEviter: quiz.questions.map((question) => question.enonce),
     }),
     'La régénération de la question a échoué. Réessayez dans quelques instants.',
@@ -287,7 +287,7 @@ async function regenererQuestion(idQuiz, idUtilisateur, numero, revision) {
     idUtilisateur,
     {
       questions,
-      statut: STATUT_BROUILLON,
+      statut: Quiz.STATUT_BROUILLON,
       date_validation: null,
       date_modification: new Date(),
     },
@@ -299,17 +299,16 @@ async function regenererQuestion(idQuiz, idUtilisateur, numero, revision) {
   return quizAJour;
 }
 
-// Avis de l'IA sur une réponse rédigée à une question ouverte (mode
-// « Tester le quiz »). Rien n'est enregistré : c'est une aide ponctuelle,
-// l'enseignant reste seul juge de la réponse.
+// Avis de l'IA sur une réponse rédigée (mode « Tester le quiz »).
+// Rien n'est enregistré : c'est une simple aide, l'enseignant reste seul juge.
 async function corrigerReponse(idQuiz, idUtilisateur, numero, reponseDonnee) {
   const quiz = await consulter(idQuiz, idUtilisateur);
-  const question = quiz.questions[numero];
+  const question = quiz.question(numero);
   if (!question) {
-    throw erreurMetier('Question introuvable', 404);
+    throw new ErreurIntrouvable('Question introuvable');
   }
   if (question.type !== 'ouverte') {
-    throw erreurMetier('Seules les réponses aux questions ouvertes sont corrigées par l\'IA.', 400);
+    throw new ErreurDonneesInvalides('Seules les réponses aux questions ouvertes sont corrigées par l\'IA.');
   }
 
   try {
@@ -320,10 +319,11 @@ async function corrigerReponse(idQuiz, idUtilisateur, numero, reponseDonnee) {
     });
   } catch (erreur) {
     console.error('Échec de correction IA', { code: erreur.code });
-    throw erreurMetier('La correction a échoué. Réessayez dans quelques instants.', 502);
+    throw new ErreurServiceIa('La correction a échoué. Réessayez dans quelques instants.');
   }
 }
 
+// Supprime un quiz (la requête filtre sur le propriétaire, sinon 404).
 async function supprimer(idQuiz, idUtilisateur) {
   const supprime = await quizDepot.supprimer(idQuiz, idUtilisateur);
   if (!supprime) {
@@ -332,8 +332,6 @@ async function supprimer(idQuiz, idUtilisateur) {
 }
 
 module.exports = {
-  LONGUEUR_MIN_COURS,
-  PHRASES_MIN_COURS,
   generer,
   listerPourCours,
   historiqueGenerations,

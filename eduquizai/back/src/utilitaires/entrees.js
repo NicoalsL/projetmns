@@ -1,11 +1,11 @@
-// Contrôles d'entrée partagés par les middlewares de validation.
+// Rôle : petits contrôles partagés par les middlewares de validation.
 
-// Plus grand INTEGER PostgreSQL (colonnes SERIAL de schema.sql) : un
-// identifiant plus grand ferait échouer la requête SQL au lieu d'un refus 400.
+// Plus grand nombre accepté par PostgreSQL pour un identifiant : au-delà,
+// la requête planterait (500) au lieu d'un refus propre (400).
 const ID_SQL_MAX = 2147483647;
 
-// Le corps doit être un objet JSON : null, un tableau ou une chaîne seraient
-// acceptés par express.json() mais feraient planter la déstructuration.
+// SÉCURITÉ — Le corps doit être un objet JSON. null, un tableau ou un texte
+// seraient acceptés par Express mais feraient planter la suite.
 function estObjetJson(corps) {
   return corps !== null && typeof corps === 'object' && !Array.isArray(corps);
 }

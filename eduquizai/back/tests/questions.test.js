@@ -48,7 +48,7 @@ describe('normaliserQuestions', () => {
     ['pas une liste', 'texte'],
     ['plus de 20 questions', Array(21).fill(vraiFauxValide)],
   ])('refuse une liste invalide : %s', (_description, questions) => {
-    expect(() => normaliserQuestions(questions)).toThrow();
+    expect(() => normaliserQuestions(questions)).toThrow(Error);
   });
 
   test.each([

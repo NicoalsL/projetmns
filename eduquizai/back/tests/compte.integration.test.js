@@ -11,6 +11,8 @@ jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
 jest.mock('../src/services/session.service', () => ({
   sessionEstValide: async () => true,
   revoquerSessions: jest.fn(),
+  // Fonction réelle : elle ne fait que signer un nouveau jeton.
+  prolongerSession: jest.requireActual('../src/services/session.service').prolongerSession,
 }));
 
 const bcrypt = require('bcryptjs');
@@ -74,6 +76,33 @@ describe('déconnexion de toutes les sessions (POST /api/compte/deconnexion)', (
 
   test('sans jeton : 401', async () => {
     const reponse = await fetch(urlBase + '/api/compte/deconnexion', { method: 'POST' });
+
+    expect(reponse.status).toBe(401);
+  });
+});
+
+describe('prolongation de la session (POST /api/compte/session)', () => {
+  test('renvoie un nouveau jeton : même compte, même version de session, nouvelle échéance', async () => {
+    const ancienJeton = jwt.sign(
+      { id_utilisateur: 42, role: 'enseignant', version: 3 },
+      process.env.JWT_SECRET,
+      { expiresIn: '10m' },
+    );
+
+    const reponse = await fetch(urlBase + '/api/compte/session', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + ancienJeton },
+    });
+
+    expect(reponse.status).toBe(200);
+    const jeton = decodeURIComponent(reponse.headers.get('set-cookie').split(';')[0].split('=')[1]);
+    const contenu = jwt.verify(jeton, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    expect(contenu).toMatchObject({ id_utilisateur: 42, role: 'enseignant', version: 3 });
+    expect(contenu.exp).toBeGreaterThan(jwt.decode(ancienJeton).exp);
+  });
+
+  test('sans jeton : 401, une session expirée ne peut pas être prolongée', async () => {
+    const reponse = await fetch(urlBase + '/api/compte/session', { method: 'POST' });
 
     expect(reponse.status).toBe(401);
   });
@@ -157,7 +186,7 @@ describe('purge du journal des générations', () => {
   test('supprime les entrées plus anciennes que la durée de conservation, passée en paramètre SQL', async () => {
     pool.query.mockResolvedValue({ rowCount: 3 });
 
-    const nombre = await generationIaDepot.purgerAnciennes();
+    const nombre = await generationIaDepot.purgerAnciens();
 
     expect(nombre).toBe(3);
     const [requeteSql, parametres] = pool.query.mock.calls[0];

@@ -51,7 +51,8 @@ function appelerCours(chemin, { method = 'GET', corps, jeton = jetonEnseignant }
   return fetch(urlBase + '/api/cours' + chemin, {
     method,
     headers: enTetes,
-    body: corps === undefined ? undefined : JSON.stringify(corps),
+    // Pas de corps du tout pour un GET (seulement pour POST, PUT…).
+    ...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
   });
 }
 

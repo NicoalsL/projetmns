@@ -1,25 +1,21 @@
-const pool = require('../config/postgres');
+const JournalPostgres = require('./journalPostgres');
 
-// Seul fichier qui parle SQL pour la table journal_securite (PostgreSQL).
+// Rôle : seul fichier SQL pour la table journal_securite.
+// Classe fille de JournalPostgres : elle hérite de la purge RGPD (purgerAnciens).
 
-// Même durée de conservation que le journal des générations, annoncée dans
-// la politique de confidentialité. Constante SQL, jamais issue d'une saisie.
-const DUREE_CONSERVATION = '6 months';
+class JournalSecuriteDepot extends JournalPostgres {
+  constructor() {
+    super('journal_securite', 'date_evenement');
+  }
 
-async function enregistrer(typeEvenement, idUtilisateur) {
-  await pool.query(
-    'INSERT INTO journal_securite (type_evenement, id_utilisateur) VALUES ($1, $2)',
-    [typeEvenement, idUtilisateur],
-  );
+  // Ajoute une ligne : type d'événement + enseignant (la base ajoute la date).
+  async enregistrer(typeEvenement, idUtilisateur) {
+    await this.executer(
+      'INSERT INTO journal_securite (type_evenement, id_utilisateur) VALUES ($1, $2)',
+      [typeEvenement, idUtilisateur],
+    );
+  }
 }
 
-// Supprime les traces plus anciennes que la durée de conservation (RGPD).
-async function purgerAnciens() {
-  const resultat = await pool.query(
-    'DELETE FROM journal_securite WHERE date_evenement < now() - $1::interval',
-    [DUREE_CONSERVATION],
-  );
-  return resultat.rowCount;
-}
-
-module.exports = { enregistrer, purgerAnciens };
+// Une seule instance, partagée par toute l'application.
+module.exports = new JournalSecuriteDepot();

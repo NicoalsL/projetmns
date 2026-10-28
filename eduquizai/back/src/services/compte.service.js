@@ -1,38 +1,40 @@
-const bcrypt = require('bcryptjs');
+const Utilisateur = require('../modeles/utilisateur.modele');
 const utilisateurDepot = require('../depots/utilisateur.depot');
 const quizDepot = require('../depots/quiz.depot');
 const { reprendreNettoyage } = require('./nettoyageQuiz.service');
-const { erreurMetier } = require('../utilitaires/erreurs');
+const { ErreurIntrouvable, ErreurAccesRefuse } = require('../utilitaires/erreurs');
 const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 const { revoquerSessions } = require('./session.service');
+const { signalerEvenementSecurite } = require('./alertesSecurite.service');
 
-// Gestion du compte de l'enseignant connecté : droit à l'effacement (RGPD).
+// Rôle : gérer le compte de l'enseignant connecté (suppression RGPD, déconnexion).
 
-// Supprime le compte et TOUTES ses données dans les deux bases.
-// Le mot de passe est redemandé : un jeton volé (ou un ordinateur resté
-// ouvert) ne doit pas suffire pour effacer définitivement un compte.
+// Supprime le compte et TOUTES ses données, dans les deux bases (droit à l'effacement).
+// SÉCURITÉ — Mot de passe redemandé : un jeton volé (ou un ordinateur resté
+// allumé) ne doit pas suffire pour tout effacer.
 async function supprimerCompte(idUtilisateur, motDePasse) {
-  const utilisateur = await utilisateurDepot.trouverParId(idUtilisateur);
-  if (!utilisateur) {
-    throw erreurMetier('Compte introuvable', 404);
+  const ligne = await utilisateurDepot.trouverParId(idUtilisateur);
+  if (!ligne) {
+    throw new ErreurIntrouvable('Compte introuvable');
   }
 
-  const motDePasseValide = await bcrypt.compare(motDePasse, utilisateur.mot_de_passe_hache);
+  // L'objet Utilisateur garde l'empreinte privée et sait comparer le mot de passe.
+  const motDePasseValide = await new Utilisateur(ligne).motDePasseCorrespond(motDePasse);
   if (!motDePasseValide) {
-    // 403 et non 401 : la session est valide, c'est la confirmation qui échoue
-    // (un 401 déconnecterait l'utilisateur côté interface).
-    throw erreurMetier('Mot de passe incorrect', 403);
+    // 403 et non 401 : la session est bonne, seule la confirmation échoue
+    // (un 401 déconnecterait l'enseignant dans l'interface).
+    throw new ErreurAccesRefuse('Mot de passe incorrect');
   }
 
-  // Les cascades SQL effacent les cours et enregistrent leurs demandes de
-  // nettoyage Mongo dans la même transaction, même après un arrêt du serveur.
+  // 1. PostgreSQL : supprimer le compte supprime aussi ses cours (ON DELETE CASCADE),
+  //    et le déclencheur note les quiz à effacer, dans la même transaction.
+  // 2. MongoDB : on efface ensuite ces quiz (voir nettoyageQuiz.service.js).
   await utilisateurDepot.supprimer(idUtilisateur);
   await reprendreNettoyage();
 
-  // Droit à l'effacement complet : la file ci-dessus ne connaît que les cours
-  // supprimés depuis la création du déclencheur. Un quiz resté orphelin plus
-  // tôt (cours déjà disparu) est effacé ici, par son propriétaire. En cas de
-  // panne Mongo, ces quiz restent inaccessibles (consulter() exige le cours).
+  // 3. Filet de sécurité : on efface aussi tout quiz restant de ce compte
+  //    (quiz « orphelin » d'un cours supprimé avant l'ajout du déclencheur).
+  //    Si MongoDB est en panne, ces quiz restent de toute façon inaccessibles.
   try {
     await quizDepot.supprimerParUtilisateur(idUtilisateur);
   } catch (erreur) {
@@ -41,10 +43,11 @@ async function supprimerCompte(idUtilisateur, motDePasse) {
   await tracer(EVENEMENTS.COMPTE_SUPPRIME, idUtilisateur);
 }
 
-// Déconnexion : invalide tous les jetons du compte, sur tous les appareils.
-// Un jeton volé devient inutilisable dès que l'enseignant se déconnecte.
+// SÉCURITÉ — Déconnexion : tous les jetons du compte deviennent invalides,
+// sur tous les appareils. Un jeton volé ne sert plus à rien.
 async function deconnecter(idUtilisateur) {
   await revoquerSessions(idUtilisateur);
+  signalerEvenementSecurite('session_revoquee');
 }
 
 module.exports = { supprimerCompte, deconnecter };

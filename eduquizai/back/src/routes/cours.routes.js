@@ -6,33 +6,38 @@ const { validerGeneration } = require('../middlewares/validationQuiz');
 const coursControleur = require('../controleurs/cours.controleur');
 const quizControleur = require('../controleurs/quiz.controleur');
 
-// Endpoints /api/cours : tous réservés à un enseignant connecté.
+// Rôle : adresses /api/cours, les cours et la génération d'un quiz à partir d'un cours.
+// Toutes réservées à un enseignant connecté.
+// Chaque route liste ses contrôles dans l'ordre : ils s'exécutent de gauche à droite.
+//
+// CHOIX — API REST : l'adresse désigne la ressource (/api/cours/42), le verbe
+// HTTP dit l'action (GET lire, POST créer, PUT modifier, DELETE supprimer).
 const routeur = express.Router();
 
-// Chaque génération coûte un appel payant à l'IA : 10 par heure et par
-// enseignant (compté sur l'identifiant du JWT, pas sur l'adresse IP). Le
-// compteur est partagé avec la régénération d'une question (limiteursIa.js).
-
-// Le jeton est vérifié AVANT de lire le corps : un visiteur anonyme ne peut
-// pas faire analyser 512 ko de JSON au serveur.
+// SÉCURITÉ — Le jeton est vérifié AVANT de lire le corps de la requête :
+// un visiteur non connecté ne peut pas faire analyser 512 ko au serveur.
 routeur.use(verifierJeton);
 
-// Un texte de cours (50 000 caractères, jusqu'à 4 octets chacun en UTF-8)
-// dépasse largement la limite de 16 ko utilisée pour l'authentification.
+// Un cours peut faire 50 000 caractères (jusqu'à 4 octets chacun) : il faut une
+// limite bien plus grande que les 16 ko de la connexion.
 routeur.use(express.json({ limit: '512kb' }));
 
-routeur.get('/', coursControleur.lister);
-routeur.post('/', validerCours, coursControleur.creer);
-routeur.get('/:id', validerIdentifiantCours, coursControleur.consulter);
-// Modification : mêmes règles de validation que la création.
+routeur.get('/', coursControleur.lister); // liste de mes cours
+routeur.post('/', validerCours, coursControleur.creer); // créer un cours
+routeur.get('/:id', validerIdentifiantCours, coursControleur.consulter); // lire un cours
+// Modifier un cours : mêmes règles de validation qu'à la création.
 routeur.put('/:id', validerIdentifiantCours, validerCours, coursControleur.modifier);
-routeur.delete('/:id', validerIdentifiantCours, coursControleur.supprimer);
+routeur.delete('/:id', validerIdentifiantCours, coursControleur.supprimer); // supprimer
 
-// Quiz d'un cours : liste et génération par l'IA.
-routeur.get('/:id/quiz', validerIdentifiantCours, quizControleur.listerPourCours);
+routeur.get('/:id/quiz', validerIdentifiantCours, quizControleur.listerPourCours); // quiz de ce cours
+// Historique des appels à l'IA pour ce cours.
 routeur.get('/:id/generations', validerIdentifiantCours, quizControleur.historiqueGenerations);
-// Validation AVANT le limiteur : une requête mal formée est refusée sans
-// consommer une des 10 générations de l'heure.
+
+// Générer un quiz avec l'IA. Chaque génération coûte (calcul ou appel payant) :
+// 10 par heure et par enseignant, compté sur l'identifiant du jeton, pas sur
+// l'adresse IP, et partagé avec la régénération d'une question (limiteursIa.js).
+// Les validations passent AVANT le limiteur : une demande mal formée est refusée
+// sans consommer une des 10 générations de l'heure.
 routeur.post(
   '/:id/quiz',
   validerIdentifiantCours,

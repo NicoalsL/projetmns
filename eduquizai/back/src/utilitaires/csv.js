@@ -1,63 +1,48 @@
-// Conversion d'un quiz exporté en fichier CSV (ouvrable dans Excel ou LibreOffice).
+// Rôle : transformer un quiz validé en fichier CSV (Excel, LibreOffice).
 
-// Point-virgule : séparateur attendu par Excel en français (la virgule y
-// sert de séparateur décimal).
+const { Question } = require('../modeles/question.modele');
+
+// Point-virgule : séparateur d'Excel en français (la virgule sert aux décimales).
 const SEPARATEUR = ';';
-// Marque d'ordre des octets UTF-8 : sans elle, Excel affiche mal les accents.
+// « BOM » UTF-8 : sans ce caractère invisible au début, Excel abîme les accents.
 const BOM_UTF8 = '﻿';
-const LETTRES = 'ABCDEF';
-const LIBELLES_TYPE = { qcm: 'QCM', vrai_faux: 'Vrai ou faux', ouverte: 'Question ouverte' };
 
-// Sécurité — injection de formules (OWASP « CSV Injection ») : un tableur
-// exécute une cellule qui commence par = + - @ (ou tabulation / retour) comme
-// une formule. Un énoncé piégé (« =HYPERLINK(...) ») pourrait alors agir sur
-// le poste de l'enseignant. On préfixe ces cellules d'une apostrophe, qui
-// force le tableur à les traiter comme du texte.
+// SÉCURITÉ — Injection de formules (« CSV Injection ») : un tableur exécute une
+// case qui commence par = + - @ comme une formule. Un énoncé piégé
+// (« =HYPERLINK(...) ») pourrait agir sur l'ordinateur de l'enseignant.
+// Parade : une apostrophe devant, et le tableur l'affiche comme du simple texte.
 const DEBUT_DE_FORMULE = /^[=+\-@\t\r]/;
 
+// Prépare une valeur pour une case du tableau : neutralise les formules, puis
+// l'entoure de guillemets.
 function cellule(valeur) {
   let texte = String(valeur ?? '');
   if (DEBUT_DE_FORMULE.test(texte)) {
     texte = "'" + texte;
   }
-  // Toujours entre guillemets, guillemets internes doublés (norme RFC 4180) :
-  // un point-virgule ou un retour à la ligne dans le texte ne casse pas la ligne.
+  // Toujours entre guillemets (norme RFC 4180) : un « ; » ou un retour à la
+  // ligne dans le texte ne casse pas le tableau.
   return '"' + texte.replace(/"/g, '""') + '"';
-}
-
-// Réponse attendue en clair : la lettre et le texte du bon choix pour un QCM.
-function bonneReponseEnTexte(question) {
-  if (question.type === 'qcm') {
-    return LETTRES[question.bonne_reponse] + ' - ' + question.choix[question.bonne_reponse];
-  }
-  if (question.type === 'vrai_faux') {
-    return question.bonne_reponse ? 'Vrai' : 'Faux';
-  }
-  return question.bonne_reponse;
-}
-
-function choixEnTexte(question) {
-  if (question.type !== 'qcm') {
-    return '';
-  }
-  return question.choix.map((choix, index) => LETTRES[index] + ' - ' + choix).join(' | ');
 }
 
 // contenu : objet renvoyé par quiz.service.js → exporter() (quiz déjà validé).
 function quizEnCsv(contenu) {
   const lignes = [['Numéro', 'Type', 'Énoncé', 'Choix', 'Bonne réponse', 'Explication']];
-  contenu.questions.forEach((question, index) => {
+  contenu.questions.forEach((donnees, index) => {
+    // Polymorphisme : chaque type de question sait écrire son libellé, ses choix
+    // et sa bonne réponse ; plus de « if (type === 'qcm') » ici.
+    const question = Question.depuisDocument(donnees);
     lignes.push([
       index + 1,
-      LIBELLES_TYPE[question.type],
+      question.libelleType(),
       question.enonce,
-      choixEnTexte(question),
-      bonneReponseEnTexte(question),
+      question.choixEnTexte(' - ').join(' | '), // « A - … | B - … » (vide hors QCM)
+      question.bonneReponseEnTexte(' - '),
       question.explication,
     ]);
   });
 
-  // \r\n : fin de ligne prévue par la norme CSV (RFC 4180).
+  // \r\n : fin de ligne de la norme CSV.
   return BOM_UTF8 + lignes.map((ligne) => ligne.map(cellule).join(SEPARATEUR)).join('\r\n') + '\r\n';
 }
 

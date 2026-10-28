@@ -1,23 +1,43 @@
 const compteService = require('../services/compte.service');
+const { prolongerSession } = require('../services/session.service');
+const { expirationJetonMs } = require('../services/auth.service');
+const { deposerSession, effacerSession } = require('../middlewares/sessionCookie');
 
-// Traduit les requêtes HTTP sur le compte en appels à compte.service.js.
+// Rôle : traduire les requêtes HTTP sur le compte en appels à compte.service.js.
+// L'enseignant concerné est toujours celui du jeton (requete.utilisateur).
 
+// DELETE /api/compte -> 204 : compte et toutes ses données supprimés (droit à l'effacement RGPD).
 async function supprimer(requete, reponse, suite) {
   try {
     await compteService.supprimerCompte(requete.utilisateur.id_utilisateur, requete.body.motDePasse);
-    reponse.status(204).end();
+    effacerSession(reponse);
+    reponse.status(204).end(); // 204 : réussi, rien à renvoyer
   } catch (erreur) {
     suite(erreur);
   }
 }
 
+// POST /api/compte/deconnexion -> 204 : tous les jetons de ce compte deviennent invalides.
 async function deconnecter(requete, reponse, suite) {
   try {
     await compteService.deconnecter(requete.utilisateur.id_utilisateur);
+    effacerSession(reponse);
     reponse.status(204).end();
   } catch (erreur) {
     suite(erreur);
   }
 }
 
-module.exports = { supprimer, deconnecter };
+// POST /api/compte/session : nouveau jeton pour la même session, demandé avant
+// l'expiration de l'actuel (bouton « Rester connecté »).
+function prolonger(requete, reponse) {
+  const jeton = prolongerSession(requete.utilisateur);
+  deposerSession(reponse, jeton);
+  reponse.json({ expiration: expirationJetonMs(jeton), id_utilisateur: requete.utilisateur.id_utilisateur });
+}
+
+function etatSession(requete, reponse) {
+  reponse.json({ expiration: requete.utilisateur.exp * 1000, id_utilisateur: requete.utilisateur.id_utilisateur });
+}
+
+module.exports = { supprimer, deconnecter, prolonger, etatSession };

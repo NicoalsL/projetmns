@@ -11,17 +11,17 @@ const {
 const { limiteurGeneration, limiteurCorrection } = require('../middlewares/limiteursIa');
 const quizControleur = require('../controleurs/quiz.controleur');
 
-// Endpoints /api/quiz/:idQuiz : consultation, édition, validation, export et
-// suppression d'un quiz. La génération est déclarée sous /api/cours/:id/quiz
-// (un quiz est toujours généré À PARTIR d'un cours), voir cours.routes.js.
+// Rôle : adresses /api/quiz/:idQuiz, lire, modifier, valider, exporter et supprimer un quiz.
+// La CRÉATION d'un quiz est ailleurs, sous /api/cours/:id/quiz (cours.routes.js),
+// car un quiz est toujours généré à partir d'un cours.
 const routeur = express.Router();
 
-// Jeton vérifié avant de lire le corps (même principe que pour les cours).
-routeur.use(verifierJeton);
-// 20 questions de 500 caractères + choix et explications : 64 ko suffisent.
-routeur.use(express.json({ limit: '64kb' }));
+routeur.use(verifierJeton); // jeton vérifié avant de lire le corps, comme pour les cours
+routeur.use(express.json({ limit: '64kb' })); // 20 questions avec choix et explications : 64 ko suffisent
 
-routeur.get('/:idQuiz', validerIdentifiantQuiz, quizControleur.consulter);
+routeur.get('/:idQuiz', validerIdentifiantQuiz, quizControleur.consulter); // lire un quiz
+// Modifier un quiz. validerRevisionQuiz : on doit envoyer la version qu'on a lue,
+// pour ne pas écraser une modification faite dans un autre onglet.
 routeur.put(
   '/:idQuiz',
   validerIdentifiantQuiz,
@@ -29,13 +29,17 @@ routeur.put(
   validerModificationQuiz,
   quizControleur.modifier,
 );
+// Valider le quiz après relecture (même contrôle de version que pour modifier).
+// CHOIX — Validation humaine obligatoire avant export : l'IA peut se tromper,
+// l'enseignant reste responsable du contenu (exigence « Éthique » du CDC).
 routeur.post('/:idQuiz/validation', validerIdentifiantQuiz, validerRevisionQuiz, quizControleur.valider);
-// Export JSON (par défaut) ou CSV : ?format=csv
+// Exporter : ?format=json (par défaut), csv ou pdf. Refusé tant que le quiz n'est pas validé.
 routeur.get('/:idQuiz/export', validerIdentifiantQuiz, validerFormatExport, quizControleur.exporter);
-routeur.delete('/:idQuiz', validerIdentifiantQuiz, quizControleur.supprimer);
+routeur.delete('/:idQuiz', validerIdentifiantQuiz, quizControleur.supprimer); // supprimer
 
-// Appels à l'IA sur une question précise (numéro à partir de 0). Validation
-// avant les limiteurs : une requête mal formée ne consomme pas de quota.
+// Appels à l'IA sur UNE question (numéro à partir de 0).
+// Les validations passent avant les limiteurs : une demande mal formée ne consomme pas de quota.
+// Régénérer une question : compte dans les 10 générations par heure.
 routeur.post(
   '/:idQuiz/questions/:numero/regeneration',
   validerIdentifiantQuiz,
@@ -44,6 +48,7 @@ routeur.post(
   limiteurGeneration,
   quizControleur.regenererQuestion,
 );
+// Demander à l'IA son avis sur une réponse rédigée (mode « Tester le quiz ») : 30 par heure.
 routeur.post(
   '/:idQuiz/questions/:numero/correction',
   validerIdentifiantQuiz,
