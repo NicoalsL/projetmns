@@ -1,4 +1,4 @@
-const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // forme simple : texte@texte.texte
 const LONGUEUR_MAX_NOM = 100; // = VARCHAR(100) dans schema.sql
 const LONGUEUR_MAX_EMAIL = 255; // = VARCHAR(255) dans schema.sql
 const OCTETS_MAX_MOT_DE_PASSE = 72; // limite de bcrypt
@@ -6,11 +6,14 @@ const LONGUEUR_MIN_MOT_DE_PASSE = 8;
 
 const { estObjetJson } = require('../utilitaires/entrees');
 
-// Valide systématiquement le corps des requêtes entrantes avant le contrôleur
-// (aucune donnée non vérifiée n'atteint la couche métier).
+// Rôle : vérifier les données du compte (inscription, connexion, suppression)
+// AVANT le contrôleur. Donnée invalide : réponse 400 avec un message clair.
+//
+// CHOIX — Validation écrite à la main plutôt qu'avec une bibliothèque (Joi, Zod) :
+// peu de champs, aucune dépendance en plus, et chaque règle se lit et s'explique.
 
-// Le caractère nul (\0) est refusé par PostgreSQL dans un texte : sans ce
-// contrôle, il provoquerait une erreur 500 au lieu d'un refus 400.
+// Le caractère nul (\0) est refusé par PostgreSQL : on le bloque ici (400)
+// plutôt que de laisser la base planter (500).
 function sansCaractereNul(valeur) {
   return !valeur.includes('\0');
 }
@@ -22,22 +25,21 @@ function emailValide(email) {
     && REGEX_EMAIL.test(email.trim());
 }
 
-// Une adresse email ne dépend pas de la casse en pratique : "Prof@x.fr" et
-// "prof@x.fr" doivent désigner le même compte (pas de doublon, connexion
-// possible quelle que soit la casse saisie).
+// Email en minuscules : « Prof@x.fr » et « prof@x.fr » = le même compte.
 function normaliserEmail(email) {
   return email.trim().toLowerCase();
 }
 
-// bcrypt ignore silencieusement tout ce qui dépasse 72 octets : deux mots de
-// passe différents seulement après le 72e octet seraient considérés égaux.
-// On compte en octets UTF-8 car "é" en occupe 2.
+// SÉCURITÉ — bcrypt ignore tout ce qui dépasse 72 octets : deux mots de passe
+// identiques sur leurs 72 premiers octets seraient vus comme égaux.
+// On compte en octets, pas en caractères : « é » prend 2 octets.
 function motDePasseValide(motDePasse, longueurMinimum) {
   return typeof motDePasse === 'string'
     && motDePasse.length >= longueurMinimum
     && Buffer.byteLength(motDePasse, 'utf8') <= OCTETS_MAX_MOT_DE_PASSE;
 }
 
+// Inscription : nom, email, mot de passe (8 caractères minimum) et consentement.
 function validerInscription(requete, reponse, suite) {
   if (!estObjetJson(requete.body)) {
     return reponse.status(400).json({ erreur: 'Corps de requête invalide' });
@@ -59,20 +61,21 @@ function validerInscription(requete, reponse, suite) {
       erreur: 'Le mot de passe doit contenir au moins 8 caractères et au plus 72 octets UTF-8',
     });
   }
-  // RGPD : consentement explicite obligatoire. On exige le booléen true (et
-  // non une valeur "vraie" comme "oui" ou 1) : la case doit avoir été cochée.
+  // RGPD — Consentement obligatoire : exactement true (case cochée),
+  // pas une valeur « à peu près vraie » comme "oui" ou 1.
   if (requete.body.consentementRgpd !== true) {
     return reponse.status(400).json({
       erreur: 'Vous devez accepter la politique de confidentialité pour créer un compte',
     });
   }
 
-  // On reconstruit le corps avec les seuls champs attendus : un champ ajouté
-  // par le client (ex. "role": "admin") n'atteint jamais le service.
+  // SÉCURITÉ — On reconstruit le corps avec SEULEMENT les champs attendus :
+  // un champ ajouté par un pirate (ex. "role": "admin") disparaît ici.
   requete.body = { nom: nom.trim(), email: normaliserEmail(email), motDePasse };
   suite();
 }
 
+// Connexion : email et mot de passe (au moins 1 caractère).
 function validerConnexion(requete, reponse, suite) {
   if (!estObjetJson(requete.body)) {
     return reponse.status(400).json({ erreur: 'Corps de requête invalide' });
@@ -87,7 +90,7 @@ function validerConnexion(requete, reponse, suite) {
   suite();
 }
 
-// DELETE /api/compte — corps : { motDePasse } (confirmation de la suppression).
+// Suppression du compte : le mot de passe est redemandé pour confirmer.
 function validerSuppressionCompte(requete, reponse, suite) {
   const motDePasse = estObjetJson(requete.body) ? requete.body.motDePasse : undefined;
   if (!motDePasseValide(motDePasse, 1)) {

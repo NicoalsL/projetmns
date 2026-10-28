@@ -1,79 +1,102 @@
+const { signalerEvenementSecurite } = require('../services/alertesSecurite.service');
 const MESSAGE_PAR_DEFAUT = 'Trop de tentatives. Réessayez plus tard.';
 
-// Par défaut, on compte par adresse IP. requete.ip ignore X-Forwarded-For par
-// défaut : un client ne peut pas contourner la limite en inventant cet en-tête.
+// Rôle : limiter le nombre d'essais. Au-delà de X essais dans une période,
+// réponse 429 (« trop de requêtes ») avec le délai avant de réessayer.
+// Deux usages :
+// - contre la force brute sur la connexion : compteur par adresse IP ;
+// - contre l'abus de l'IA (coûteuse) : compteur par enseignant.
+//
+// CHOIX — Écrit à la main (une Map) plutôt qu'avec express-rate-limit :
+// une vingtaine de lignes que je peux expliquer et tester.
+// CHOIX — POO : un limiteur garde un ÉTAT (ses compteurs) qui ne doit être
+// modifié que par lui ; c'est donc un objet, avec ses données en champs privés (#).
+// Pas de classe mère : rien d'autre dans le projet n'est « une sorte de limiteur ».
+// LIMITE — Compteurs en mémoire : propres à ce serveur et remis à zéro au
+// redémarrage. Avec plusieurs serveurs, il faudrait les partager (Redis).
+
+// Clé par défaut : l'adresse IP. requete.ip ignore l'en-tête X-Forwarded-For
+// (sauf réglage TRUST_PROXY) : un client ne peut pas s'inventer une adresse.
 function cleParAdresseIp(requete) {
   return requete.ip || requete.socket?.remoteAddress || 'inconnue';
 }
 
-// Limite le nombre de requêtes par fenêtre de temps, puis renvoie une erreur 429.
-// Deux usages :
-// - force brute sur /api/auth : compteur par adresse IP (réglage par défaut) ;
-// - coût de l'IA sur la génération de quiz : compteur par enseignant
-//   (obtenirCle lit alors l'identifiant du JWT).
-//
-// Limite connue : les compteurs sont en mémoire, donc propres à un processus
-// et remis à zéro au redémarrage. Avec plusieurs instances, il faudrait un
-// stockage partagé (Redis par exemple).
-//
-// "maintenant" est injectable pour que les tests puissent simuler le temps.
-function creerLimiteur({
-  maximum = 20,
-  fenetreMs = 15 * 60 * 1000,
-  maximumAdresses = 10000,
-  maintenant = Date.now,
-  obtenirCle = cleParAdresseIp,
-  message = MESSAGE_PAR_DEFAUT,
-} = {}) {
-  // Adresse IP -> { nombre de requêtes, instant d'expiration de la fenêtre }
-  const tentatives = new Map();
-  let prochainNettoyage = 0;
+class LimiteurDeRequetes {
+  // Un compteur par clé : { nombre d'essais, fin de la période }.
+  #tentatives = new Map();
+  #prochainNettoyage = 0;
+  #reglages;
 
-  // Supprime les compteurs expirés au plus une fois par minute, pour que la
-  // Map ne grossisse pas indéfiniment.
-  function nettoyer(instant) {
-    if (instant < prochainNettoyage) return;
-    for (const [adresse, compteur] of tentatives) {
-      if (compteur.expiration <= instant) tentatives.delete(adresse);
+  // « maintenant » est un paramètre pour que les tests puissent avancer le temps.
+  constructor({
+    maximum = 20, // nombre d'essais autorisés…
+    fenetreMs = 15 * 60 * 1000, // …dans cette période (15 minutes)
+    maximumAdresses = 10000,
+    maintenant = Date.now,
+    obtenirCle = cleParAdresseIp,
+    message = MESSAGE_PAR_DEFAUT,
+  } = {}) {
+    this.#reglages = { maximum, fenetreMs, maximumAdresses, maintenant, obtenirCle, message };
+  }
+
+  // Supprime les compteurs périmés (au plus une fois par minute)
+  // pour que la mémoire ne grossisse pas sans fin.
+  #nettoyer(instant) {
+    if (instant < this.#prochainNettoyage) return;
+    for (const [adresse, compteur] of this.#tentatives) {
+      if (compteur.expiration <= instant) this.#tentatives.delete(adresse);
     }
-    prochainNettoyage = instant + Math.min(fenetreMs, 60000);
+    this.#prochainNettoyage = instant + Math.min(this.#reglages.fenetreMs, 60000);
   }
 
-  function refuser(reponse, secondesAvantNouvelEssai) {
+  // Refus : 429 + en-tête Retry-After (secondes avant de pouvoir réessayer).
+  #refuser(reponse, secondesAvantNouvelEssai) {
+    signalerEvenementSecurite('requete_limitee');
     reponse.set('Retry-After', String(secondesAvantNouvelEssai));
-    return reponse.status(429).json({ erreur: message });
+    return reponse.status(429).json({ erreur: this.#reglages.message });
   }
 
-  return function limiterAuthentification(requete, reponse, suite) {
+  // Le contrôle, exécuté à chaque requête (middleware Express).
+  verifier(requete, reponse, suite) {
+    const { maximum, fenetreMs, maximumAdresses, maintenant, obtenirCle } = this.#reglages;
     const instant = maintenant();
-    nettoyer(instant);
+    this.#nettoyer(instant);
 
     const adresse = obtenirCle(requete);
 
-    let compteur = tentatives.get(adresse);
+    // Période terminée : on repart de zéro.
+    let compteur = this.#tentatives.get(adresse);
     if (compteur && compteur.expiration <= instant) {
-      tentatives.delete(adresse);
+      this.#tentatives.delete(adresse);
       compteur = undefined;
     }
 
     if (!compteur) {
-      // Garde-fou mémoire : une attaque depuis des milliers d'IP ne doit pas
-      // pouvoir saturer la RAM du serveur avec des compteurs.
-      if (tentatives.size >= maximumAdresses) {
-        return refuser(reponse, 60);
+      // SÉCURITÉ — Garde-fou mémoire : une attaque depuis des milliers
+      // d'adresses ne doit pas remplir la mémoire du serveur.
+      if (this.#tentatives.size >= maximumAdresses) {
+        return this.#refuser(reponse, 60);
       }
       compteur = { nombre: 0, expiration: instant + fenetreMs };
-      tentatives.set(adresse, compteur);
+      this.#tentatives.set(adresse, compteur);
     }
 
     if (compteur.nombre >= maximum) {
       const secondesRestantes = Math.max(1, Math.ceil((compteur.expiration - instant) / 1000));
-      return refuser(reponse, secondesRestantes);
+      return this.#refuser(reponse, secondesRestantes);
     }
 
     compteur.nombre += 1;
-    suite();
-  };
+    suite(); // essai autorisé
+  }
+}
+
+// Fabrique un limiteur et renvoie son contrôle, prêt à être placé dans une route.
+// (Express attend une fonction : on lui donne la méthode verifier, liée à l'objet.)
+function creerLimiteur(options) {
+  const limiteur = new LimiteurDeRequetes(options);
+  return limiteur.verifier.bind(limiteur);
 }
 
 module.exports = creerLimiteur;
+module.exports.LimiteurDeRequetes = LimiteurDeRequetes;

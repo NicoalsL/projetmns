@@ -37,6 +37,16 @@ describe('verifierEnvironnement', () => {
     expect(() => verifierEnvironnement(avecUrl)).not.toThrow();
   });
 
+  test('accepte Ollama sur une autre machine uniquement en HTTPS', () => {
+    const distantChiffre = {
+      ...configurationValide,
+      IA_FOURNISSEUR: 'ollama',
+      OLLAMA_URL: 'https://ia.exemple.fr',
+    };
+
+    expect(() => verifierEnvironnement(distantChiffre)).not.toThrow();
+  });
+
   test.each([
     ['secret JWT vide', { JWT_SECRET: '' }],
     ['secret JWT faible', { JWT_SECRET: 'changeme' }],
@@ -50,10 +60,12 @@ describe('verifierEnvironnement', () => {
     ['fournisseur IA inconnu', { IA_FOURNISSEUR: 'autre' }],
     ['fournisseur OpenAI sans clé', { IA_FOURNISSEUR: 'openai', OPENAI_API_KEY: '' }],
     ['URL Ollama invalide', { IA_FOURNISSEUR: 'ollama', OLLAMA_URL: 'ollama:11434' }],
+    ['Ollama distant en HTTP non chiffré', { IA_FOURNISSEUR: 'ollama', OLLAMA_URL: 'http://192.168.1.20:11434' }],
     ['nombre de proxys non numérique', { TRUST_PROXY: 'true' }],
     ['nombre de proxys démesuré', { TRUST_PROXY: '99' }],
+    ['durée de maintien Ollama mal écrite', { OLLAMA_CONSERVATION: '30 minutes' }],
   ])('refuse : %s', (_description, modification) => {
-    expect(() => verifierEnvironnement({ ...configurationValide, ...modification })).toThrow();
+    expect(() => verifierEnvironnement({ ...configurationValide, ...modification })).toThrow(Error);
   });
 });
 

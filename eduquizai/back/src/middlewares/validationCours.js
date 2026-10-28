@@ -2,16 +2,17 @@ const LONGUEUR_MAX_TITRE = 200; // = VARCHAR(200) dans schema.sql
 const LONGUEUR_MAX_CONTENU = 50000; // limite métier : un chapitre de cours
 const { ID_SQL_MAX, estObjetJson } = require('../utilitaires/entrees');
 
-// Valide le corps d'une création de cours avant le contrôleur.
+// Rôle : vérifier un cours (titre, texte) et son numéro dans l'adresse,
+// AVANT le contrôleur. Donnée invalide : réponse 400.
 
-// Le caractère nul (\0) est refusé par PostgreSQL dans un TEXT : on le rejette
-// proprement en 400 plutôt que de provoquer une erreur 500 côté base.
+// Texte non vide et sans caractère nul (\0, refusé par PostgreSQL).
 function texteNonVide(valeur) {
   return typeof valeur === 'string'
     && valeur.trim().length > 0
     && !valeur.includes('\0');
 }
 
+// Création ou modification : titre (1 à 200 caractères), texte (1 à 50 000).
 function validerCours(requete, reponse, suite) {
   const corps = requete.body;
   if (!estObjetJson(corps)) {
@@ -30,22 +31,24 @@ function validerCours(requete, reponse, suite) {
     });
   }
 
-  // On ne garde que les champs attendus : l'auteur du cours vient
-  // exclusivement du JWT, jamais d'un champ "id_utilisateur" envoyé par le client.
+  // SÉCURITÉ — On garde seulement le titre et le texte. L'auteur vient du
+  // jeton : un « id_utilisateur » envoyé par le navigateur est ignoré.
   requete.body = { titre: titre.trim(), contenuTexte: contenuTexte.trim() };
   suite();
 }
 
-// Valide le paramètre :id de l'URL. La regex refuse "0", "-1", "1.2", "01",
-// et toute tentative d'injection comme "1 OR 1=1", avant tout accès SQL.
+// SÉCURITÉ — Le numéro dans l'adresse (/api/cours/42) doit être un entier
+// positif. Refuse « 0 », « -1 », « 1.2 », « 01 » et les tentatives
+// d'injection comme « 1 OR 1=1 », avant même d'interroger la base.
 function validerIdentifiantCours(requete, reponse, suite) {
   const valeur = requete.params.id;
-  const estEntierPositif = /^[1-9][0-9]*$/.test(valeur);
+  // Style défensif : on vérifie d'abord que c'est bien du texte (trouvé par le fuzzing).
+  const estEntierPositif = typeof valeur === 'string' && /^[1-9][0-9]*$/.test(valeur);
   if (!estEntierPositif || Number(valeur) > ID_SQL_MAX) {
     return reponse.status(400).json({ erreur: 'Identifiant de cours invalide' });
   }
 
-  requete.idCours = Number(valeur);
+  requete.idCours = Number(valeur); // rangé en nombre pour le contrôleur
   suite();
 }
 
