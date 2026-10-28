@@ -45,6 +45,43 @@
           ]
         },
         {
+          "name": "Route protégée sans jeton",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cours"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"refus 401 sans jeton\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Inscription refusée sans consentement RGPD",
           "request": {
             "method": "POST",
@@ -266,43 +303,6 @@
                 "exec": [
                   "pm.test(\"second compte créé\", () => pm.response.to.have.status(201));",
                   "pm.collectionVariables.set('jetonAutre', pm.cookies.get('eduquizai_session'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Route protégée sans jeton",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/cours",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "cours"
-              ]
-            },
-            "description": "",
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"refus 401 sans jeton\", () => pm.response.to.have.status(401));"
                 ]
               }
             }
