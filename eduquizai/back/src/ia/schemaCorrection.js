@@ -1,7 +1,6 @@
-// Schéma JSON imposé au modèle quand il corrige une réponse rédigée à une
-// question ouverte (mode « Tester le quiz »). Même principe que
-// schemaReponse.js : la forme est contrainte, le contenu est revalidé ensuite
-// par genererQuiz.js (evaluerReponse).
+// Rôle : le « moule » imposé à l'IA quand elle corrige une réponse rédigée
+// (mode « Tester le quiz »). Même principe que schemaReponse.js : la forme
+// est imposée, le contenu est revérifié par genererQuiz.js.
 const APPRECIATIONS = ['juste', 'partielle', 'fausse'];
 
 const SCHEMA_CORRECTION = {

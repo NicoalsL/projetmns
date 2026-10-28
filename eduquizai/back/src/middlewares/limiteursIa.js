@@ -1,9 +1,12 @@
 const creerLimiteur = require('./limitationAuth');
 
-// Limiteurs des routes qui appellent l'IA (chaque appel peut être payant).
-// Créés une seule fois et partagés : une régénération de question (route
-// /api/quiz) consomme le MÊME quota que la génération d'un quiz (route
-// /api/cours). Compteur par enseignant (identifiant du JWT), pas par adresse IP.
+// Rôle : quotas sur les routes qui appellent l'IA.
+// SÉCURITÉ — Chaque appel coûte (calcul, ou argent avec OpenAI) : sans quota,
+// un seul compte pourrait faire exploser la facture.
+// CHOIX — Compteur par enseignant (identifiant du jeton), pas par IP :
+// c'est le compte qui consomme, quelle que soit sa connexion.
+// Créés une seule fois et partagés : régénérer une question consomme le
+// MÊME quota que générer un quiz.
 
 const UNE_HEURE_MS = 60 * 60 * 1000;
 
@@ -11,7 +14,7 @@ function cleEnseignant(requete) {
   return 'utilisateur-' + requete.utilisateur.id_utilisateur;
 }
 
-// Génération d'un quiz ou régénération d'une question.
+// Générer un quiz ou régénérer une question : 10 par heure.
 const limiteurGeneration = creerLimiteur({
   maximum: 10,
   fenetreMs: UNE_HEURE_MS,
@@ -19,8 +22,8 @@ const limiteurGeneration = creerLimiteur({
   message: 'Limite de générations atteinte (10 par heure). Réessayez plus tard.',
 });
 
-// Correction d'une réponse ouverte (mode « Tester le quiz ») : appel plus
-// court, quota plus large pour pouvoir tester un quiz entier.
+// Corriger une réponse rédigée (« Tester le quiz ») : 30 par heure.
+// Appel plus court, donc quota plus large, pour tester un quiz entier.
 const limiteurCorrection = creerLimiteur({
   maximum: 30,
   fenetreMs: UNE_HEURE_MS,

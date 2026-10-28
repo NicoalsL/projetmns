@@ -1,13 +1,16 @@
-// Fournisseur de SIMULATION, sans IA : fabrique des questions simples à partir
-// des phrases du cours. Il sert à développer, tester et faire une démonstration
-// sans clé OpenAI ni coût. Les quiz produits sont marqués "simulation" et
-// l'interface l'affiche : ils ne sont jamais présentés comme générés par une IA.
+// Rôle : faux fournisseur, SANS IA. Fabrique des questions simples à partir
+// des phrases du cours.
+// CHOIX — Permet de développer, tester et faire une démo sans clé OpenAI, sans
+// coût et sans carte graphique. Les quiz sont marqués « simulation » et
+// l'interface l'affiche : jamais présentés comme faits par une IA.
+
+const FournisseurIa = require('./fournisseurIa');
 
 const LONGUEUR_MIN_PHRASE = 25;
 const LONGUEUR_MIN_MOT_CLE = 6;
 const NOMBRE_CHOIX_QCM = 4;
 const LONGUEUR_MAX_SOURCE = 500; // = LONGUEUR_MAX_SOURCE de utilitaires/questions.js
-// Correction simulée : part des mots attendus retrouvés pour juger la réponse.
+// Correction simulée : on juge selon la part des mots attendus retrouvés.
 const SEUIL_JUSTE = 0.6;
 const SEUIL_PARTIEL = 0.3;
 
@@ -19,19 +22,20 @@ function extrairePhrases(texte) {
     .filter((phrase) => phrase.length >= LONGUEUR_MIN_PHRASE);
 }
 
-// Mots "porteurs de sens" (assez longs) d'un texte, sans doublon.
+// Mots importants (assez longs) d'un texte, sans doublon.
 function extraireMotsCles(texte) {
   const mots = texte.match(/[\p{L}-]+/gu) || [];
   const motsLongs = mots.filter((mot) => mot.length >= LONGUEUR_MIN_MOT_CLE);
   return [...new Set(motsLongs.map((mot) => mot.toLowerCase()))];
 }
 
+// Coupe un texte trop long et ajoute « … ».
 function raccourcir(texte, longueurMax) {
   return texte.length <= longueurMax ? texte : texte.slice(0, longueurMax - 1) + '…';
 }
 
-// QCM "texte à trous" : un mot de la phrase est masqué, les distracteurs sont
-// d'autres mots longs du cours. Renvoie null si le cours manque de vocabulaire.
+// QCM « texte à trous » : un mot de la phrase est caché, les mauvaises réponses
+// sont d'autres mots du cours. null si le cours n'a pas assez de vocabulaire.
 function creerQcm(phrase, motsDuCours, numero) {
   const motsDeLaPhrase = extraireMotsCles(phrase);
   if (motsDeLaPhrase.length === 0) return null;
@@ -72,6 +76,7 @@ function creerQcm(phrase, motsDuCours, numero) {
   };
 }
 
+// Vrai/faux : une phrase du cours, donc vraie.
 function creerVraiFaux(phrase) {
   return {
     type: 'vrai_faux',
@@ -81,6 +86,7 @@ function creerVraiFaux(phrase) {
   };
 }
 
+// Question ouverte : on demande d'expliquer une phrase du cours.
 function creerQuestionOuverte(phrase) {
   return {
     type: 'ouverte',
@@ -135,7 +141,7 @@ function creerQuestion(typeVoulu, phrase, motsDuCours, numero, repartition) {
 
 // questionsAEviter (régénération d'une question) : on décale le choix des
 // phrases d'autant, pour ne pas reproduire une question déjà présente.
-async function genererQuestions({ texteCours, repartition, questionsAEviter = [] }) {
+function fabriquerQuestions({ texteCours, repartition, questionsAEviter = [] }) {
   const phrases = extrairePhrases(texteCours);
   // Cours trop court : on se sert du texte entier comme unique "phrase".
   const sources = phrases.length > 0 ? phrases : [texteCours.trim()];
@@ -163,7 +169,7 @@ function motsSignificatifs(texte) {
 // Correction sans IA d'une réponse ouverte : part des mots de la réponse
 // attendue retrouvés dans la réponse donnée. Approximation grossière,
 // présentée comme telle à l'enseignant (le commentaire le précise).
-async function evaluerReponse({ reponseAttendue, reponseDonnee }) {
+function evaluerSansIa({ reponseAttendue, reponseDonnee }) {
   const motsAttendus = motsSignificatifs(reponseAttendue);
   const motsDonnes = motsSignificatifs(reponseDonnee);
   const retrouves = [...motsAttendus].filter((mot) => motsDonnes.has(mot)).length;
@@ -182,4 +188,26 @@ async function evaluerReponse({ reponseAttendue, reponseDonnee }) {
   };
 }
 
-module.exports = { nom: 'simulation', modele: () => 'simulation-locale', genererQuestions, evaluerReponse };
+// Classe fille de FournisseurIa. Elle n'appelle aucune IA : au lieu de
+// redéfinir appeler(), elle REDÉFINIT directement genererQuestions() et
+// evaluerReponse() (polymorphisme : même méthode, comportement différent).
+class FournisseurSimulation extends FournisseurIa {
+  constructor() {
+    super('simulation');
+  }
+
+  modele() {
+    return 'simulation-locale';
+  }
+
+  async genererQuestions(consignes) {
+    return fabriquerQuestions(consignes);
+  }
+
+  async evaluerReponse(consignes) {
+    return evaluerSansIa(consignes);
+  }
+}
+
+// Une seule instance, partagée par toute l'application.
+module.exports = new FournisseurSimulation();

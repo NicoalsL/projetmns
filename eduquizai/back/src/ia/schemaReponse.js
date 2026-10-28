@@ -1,11 +1,10 @@
-// Schéma JSON imposé aux modèles d'IA (OpenAI "structured outputs", Ollama
-// "format") : le modèle est contraint de répondre avec un JSON de cette forme,
-// ce qui évite de devoir "deviner" le JSON dans du texte libre.
-// La réponse reste ensuite revalidée par utilitaires/questions.js : un schéma
-// garantit la forme, pas le sens (ex. un index de bonne réponse hors des choix).
-//
-// En mode strict, OpenAI exige que tous les champs soient "required" ; les
-// champs sans objet pour un type de question valent null.
+// Rôle : le « moule » imposé à l'IA pour un quiz (schéma JSON).
+// CHOIX — Imposer un schéma (OpenAI « structured outputs », Ollama « format »)
+// plutôt que demander du texte libre : pas besoin de « deviner » le JSON.
+// Mais le schéma garantit la FORME, pas le SENS (ex. bonne réponse hors des
+// choix) : la réponse est donc revérifiée par utilitaires/questions.js.
+// En mode strict, OpenAI exige que tous les champs soient "required" ; un champ
+// inutile pour un type de question vaut null.
 const SCHEMA_REPONSE = {
   type: 'object',
   additionalProperties: false,
@@ -23,8 +22,8 @@ const SCHEMA_REPONSE = {
           choix: { anyOf: [{ type: 'array', items: { type: 'string' } }, { type: 'null' }] },
           bonne_reponse: { anyOf: [{ type: 'integer' }, { type: 'boolean' }, { type: 'string' }] },
           explication: { type: 'string' },
-          // Phrase du cours, recopiée mot pour mot, qui justifie la réponse :
-          // genererQuiz.js vérifie ensuite qu'elle figure vraiment dans le cours.
+          // Phrase du cours, mot pour mot, qui justifie la réponse
+          // (genererQuiz.js vérifie qu'elle est vraiment dans le cours).
           source: { type: 'string' },
         },
       },
