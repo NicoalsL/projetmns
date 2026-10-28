@@ -28,7 +28,10 @@ jobs:
         ports:
           - 27017:27017
     env:
-      DATABASE_URL: postgresql://eduquizai_test:mot_de_passe_ci_uniquement@localhost:5432/eduquizai_test
+      # Moindre privilège, comme en production : db:init utilise le compte
+      # propriétaire et crée le compte restreint, que l'API utilise ensuite.
+      DATABASE_URL_ADMIN: postgresql://eduquizai_test:mot_de_passe_ci_uniquement@localhost:5432/eduquizai_test
+      DATABASE_URL: postgresql://eduquizai_app:mot_de_passe_app_ci_uniquement@localhost:5432/eduquizai_test
       # Secret de test éphémère, exclusivement pour ce job isolé.
       JWT_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       PORT: '3000'
@@ -47,8 +50,22 @@ jobs:
             eduquizai/front/package-lock.json
       - run: npm ci
         working-directory: eduquizai/back
-      - run: npm test
+      # Qualité du code : oxlint (analyse statique), aucun avertissement toléré.
+      - run: npm run lint
         working-directory: eduquizai/back
+      - name: Auditer les dépendances backend
+        run: npm audit --audit-level=high
+        working-directory: eduquizai/back
+      # Tests Jest + mesure de couverture : échec si elle passe sous les seuils
+      # fixés dans package.json (80 % des lignes).
+      - run: npm run test:couverture
+        working-directory: eduquizai/back
+      - name: Conserver le rapport de couverture
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rapport-couverture-back
+          path: eduquizai/back/coverage/
       - run: npm run db:init
         working-directory: eduquizai/back
       - name: Demarrer API de test
@@ -64,6 +81,10 @@ jobs:
       - run: npm run test:reel
         working-directory: eduquizai/back
       - run: npm run test:reel:quiz
+        working-directory: eduquizai/back
+      # Collection Postman (outil de test recommandé par le CDC) exécutée par
+      # Newman sur l'API démarrée : parcours enseignant et contrôles de sécurité.
+      - run: npm run test:postman
         working-directory: eduquizai/back
       # Scan de sécurité OWASP ZAP (passif) sur l'API démarrée : en-têtes,
       # divulgation d'informations, mauvaises configurations. -I : les
@@ -85,9 +106,43 @@ jobs:
         working-directory: eduquizai/front
       - run: npm run lint
         working-directory: eduquizai/front
+      - name: Auditer les dépendances frontend
+        run: npm audit --audit-level=high
+        working-directory: eduquizai/front
       - run: npm run build
         working-directory: eduquizai/front
       - run: docker build -t eduquizai-back-ci ./eduquizai/back
       - run: docker build -t eduquizai-front-ci ./eduquizai/front
-      # Image de production du front (build Vite + nginx, voir docs/deploiement.md).
+      # Image de production du front (build Vite + nginx, voir documentation/exploitation/deploiement.md).
       - run: docker build -f ./eduquizai/front/Dockerfile.prod -t eduquizai-front-prod-ci ./eduquizai/front
+
+  # Livraison continue (CD) : seulement sur la branche main, et seulement si
+  # toutes les vérifications ci-dessus ont réussi. Les images de production
+  # sont publiées sur le registre GitHub (ghcr.io), prêtes à être déployées
+  # par scripts/deployer.sh ; il n'y a pas encore de serveur cible.
+  livraison:
+    needs: verification
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Publier les images de production sur ghcr.io
+        env:
+          JETON_REGISTRE: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Le registre exige un nom en minuscules.
+          proprietaire=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          registre="ghcr.io/$proprietaire"
+          version="${GITHUB_SHA::12}"
+          echo "$JETON_REGISTRE" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -t "$registre/eduquizai-back:$version" -t "$registre/eduquizai-back:latest" ./eduquizai/back
+          docker build -f ./eduquizai/front/Dockerfile.prod \
+            -t "$registre/eduquizai-front:$version" -t "$registre/eduquizai-front:latest" ./eduquizai/front
+          for image in eduquizai-back eduquizai-front; do
+            docker push "$registre/$image:$version"
+            docker push "$registre/$image:latest"
+          done

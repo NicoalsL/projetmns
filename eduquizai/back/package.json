@@ -11,7 +11,14 @@
     "config:init": "node scripts/initialiser-config.js",
     "db:init": "node --env-file-if-exists=.env scripts/initialiser-base.js",
     "test:reel": "node --env-file-if-exists=.env scripts/verifier-cours-reel.js",
-    "test:reel:quiz": "node --env-file-if-exists=.env scripts/verifier-quiz-reel.js"
+    "test:reel:quiz": "node --env-file-if-exists=.env scripts/verifier-quiz-reel.js",
+    "test:reel:csrf": "node scripts/verifier-cookie-csrf-reel.js",
+    "test:reel:openai": "node --env-file-if-exists=.env scripts/verifier-openai-reel.js",
+    "test:postman": "npx --yes newman@6 run postman/eduquizai.postman_collection.json -e postman/local.postman_environment.json",
+    "mesure:performance": "node --env-file-if-exists=.env scripts/mesurer-performance.js",
+    "lint": "oxlint --deny-warnings src tests scripts",
+    "test:couverture": "jest --runInBand --coverage",
+    "test:charge": "node --env-file-if-exists=.env scripts/tester-charge.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -19,9 +26,29 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.21.0",
+    "pdfkit": "^0.20.2",
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "jest": "^30.5.2"
+    "jest": "^30.5.2",
+    "oxlint": "^1.87.0"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coverageReporters": [
+      "text",
+      "text-summary",
+      "html"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 80,
+        "statements": 80,
+        "branches": 75,
+        "functions": 80
+      }
+    }
   }
 }
