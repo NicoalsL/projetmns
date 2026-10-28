@@ -11,6 +11,12 @@ const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
 const pool = require('../src/config/postgres');
 
+function lireJetonCookie(reponse) {
+  const cookie = reponse.headers.get('set-cookie') || '';
+  const premier = cookie.split(';')[0];
+  return premier.includes('=') ? decodeURIComponent(premier.slice(premier.indexOf('=') + 1)) : null;
+}
+
 const URL_API = process.env.API_URL || 'http://127.0.0.1:3000';
 const prefixe = 'verification-' + randomUUID();
 const emailsDeTest = [prefixe + '-a@example.test', prefixe + '-b@example.test'];
@@ -25,10 +31,13 @@ async function appelerApi(chemin, { method = 'GET', corps, jeton } = {}) {
   const reponse = await fetch(URL_API + chemin, {
     method,
     headers: enTetes,
-    body: corps === undefined ? undefined : JSON.stringify(corps),
+    // Pas de corps du tout pour un GET (seulement pour POST, PUT…).
+    ...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
   });
   const texte = await reponse.text();
-  return { statut: reponse.status, donnees: texte ? JSON.parse(texte) : null };
+  const donnees = texte ? JSON.parse(texte) : null;
+  if (chemin.startsWith('/api/auth/') && donnees) donnees.jeton = lireJetonCookie(reponse);
+  return { statut: reponse.status, donnees };
 }
 
 function verifier(obtenu, attendu, description) {

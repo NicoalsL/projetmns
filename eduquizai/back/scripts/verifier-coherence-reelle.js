@@ -18,6 +18,12 @@ const quizDepot = require('../src/depots/quiz.depot');
 const { reprendreNettoyage } = require('../src/services/nettoyageQuiz.service');
 const app = require('../src/app');
 
+function lireJetonCookie(reponse) {
+  const cookie = reponse.headers.get('set-cookie') || '';
+  const premier = cookie.split(';')[0];
+  return premier.includes('=') ? decodeURIComponent(premier.slice(premier.indexOf('=') + 1)) : null;
+}
+
 let serveur;
 let urlBase;
 let nombreVerifications = 0;
@@ -32,10 +38,13 @@ async function appeler(chemin, jeton, method = 'GET', corps) {
   const reponse = await fetch(urlBase + chemin, {
     method,
     headers: { 'Content-Type': 'application/json', ...(jeton ? { Authorization: 'Bearer ' + jeton } : {}) },
-    body: corps === undefined ? undefined : JSON.stringify(corps),
+    // Pas de corps du tout pour un GET (seulement pour POST, PUT…).
+    ...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
   });
   const texte = await reponse.text();
-  return { statut: reponse.status, donnees: texte ? JSON.parse(texte) : null };
+  const donnees = texte ? JSON.parse(texte) : null;
+  if (chemin.startsWith('/api/auth/') && donnees) donnees.jeton = lireJetonCookie(reponse);
+  return { statut: reponse.status, donnees };
 }
 
 async function creerCompte(suffixe) {

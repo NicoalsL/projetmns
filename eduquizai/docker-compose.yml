@@ -30,6 +30,10 @@ services:
   back:
     build: ./back
     env_file: ./back/.env
+    environment:
+      # SÉCURITÉ — Moindre privilège : l'API ne reçoit pas l'accès du compte
+      # propriétaire de la base (réservé à db-init) ; elle utilise DATABASE_URL.
+      DATABASE_URL_ADMIN: ""
     # Permet au conteneur de joindre Ollama, qui tourne sur la machine hôte
     # (IA_FOURNISSEUR=ollama). Docker Desktop le fournit déjà ; nécessaire sous Linux.
     extra_hosts:

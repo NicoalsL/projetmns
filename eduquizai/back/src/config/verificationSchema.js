@@ -1,13 +1,14 @@
 const pool = require('./postgres');
 
-// Tables indispensables au fonctionnement de l'API. Si l'une manque, le schéma
-// SQL n'a pas été appliqué (voir npm run db:init).
+// Rôle : vérifier, au démarrage, que PostgreSQL a bien toutes ses tables.
+// Si l'une manque, c'est que le script de création n'a pas été lancé (npm run db:init).
+
 const TABLES_REQUISES = ['utilisateur', 'cours', 'generation_ia', 'journal_securite', 'nettoyage_quiz'];
 
-// Vérifie que toutes les tables existent. to_regclass renvoie NULL pour une
-// table absente au lieu de lever une erreur, ce qui permet un simple booléen.
-// La colonne version_jeton (ajoutée après coup) est vérifiée aussi : sans
-// elle, chaque requête authentifiée échouerait.
+// Renvoie true si tout est en place. Une seule requête SQL :
+// - to_regclass donne NULL pour une table absente (au lieu de planter), d'où un simple vrai / faux ;
+// - la colonne version_jeton, ajoutée après coup, est vérifiée aussi : sans elle,
+//   aucune requête d'un enseignant connecté ne fonctionnerait.
 async function schemaEstPret() {
   const resultat = await pool.query(
     `SELECT bool_and(to_regclass('public.' || nom_table) IS NOT NULL)
@@ -21,4 +22,20 @@ async function schemaEstPret() {
   return resultat.rows[0].pret === true;
 }
 
-module.exports = { schemaEstPret };
+// SÉCURITÉ — Moindre privilège : l'API doit utiliser le compte restreint créé
+// par npm run db:init, pas un compte qui peut tout faire. Renvoie true si le
+// compte connecté n'est ni superutilisateur, ni capable de créer des bases ou
+// des comptes, ni propriétaire des tables (il ne peut donc pas les supprimer).
+async function compteApiEstRestreint() {
+  const resultat = await pool.query(
+    `SELECT NOT (r.rolsuper OR r.rolcreaterole OR r.rolcreatedb)
+       AND NOT EXISTS (
+         SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user
+       ) AS restreint
+     FROM pg_roles AS r
+     WHERE r.rolname = current_user`,
+  );
+  return resultat.rows[0]?.restreint === true;
+}
+
+module.exports = { schemaEstPret, compteApiEstRestreint };

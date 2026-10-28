@@ -1,8 +1,10 @@
-# Configuration proche de la PRODUCTION (procédure : docs/deploiement.md).
+# Configuration proche de la PRODUCTION (procédure : documentation/exploitation/deploiement.md).
 # Différences avec docker-compose.yml (développement) :
 # - front construit (vite build) et servi par nginx, seul port exposé ;
 # - API lancée sans rechargement automatique, joignable uniquement via nginx ;
 # - aucune base de données exposée, MongoDB protégé par un mot de passe ;
+# - moindre privilège : l'API utilise des comptes restreints (PostgreSQL et
+#   MongoDB), jamais les comptes d'administration ;
 # - secrets lus dans .env.production (jamais commité), redémarrage automatique.
 #
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait
@@ -31,8 +33,12 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_UTILISATEUR:?MONGO_UTILISATEUR requis dans .env.production}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_MOT_DE_PASSE:?MONGO_MOT_DE_PASSE requis dans .env.production}
+      # Compte de l'API, limité à la base eduquizai (voir mongo-init/).
+      MONGO_APP_MOT_DE_PASSE: ${MONGO_APP_MOT_DE_PASSE:?MONGO_APP_MOT_DE_PASSE requis dans .env.production}
     volumes:
       - mongo_data:/data/db
+      # Exécuté une seule fois, à la création de la base : crée le compte de l'API.
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 5s
@@ -43,21 +49,28 @@ services:
   db-init:
     build: ./back
     command: ["npm", "run", "db:init"]
-    environment: &environnement-back
-      NODE_ENV: production
-      # Mots de passe en hexadécimal (voir .env.production.example) : ils
-      # s'insèrent dans ces URL sans caractère à échapper.
-      DATABASE_URL: postgresql://eduquizai:${POSTGRES_MOT_DE_PASSE}@postgres:5432/eduquizai
-      MONGO_URL: mongodb://${MONGO_UTILISATEUR}:${MONGO_MOT_DE_PASSE}@mongo:27017/eduquizai?authSource=admin
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requis dans .env.production}
-      IA_FOURNISSEUR: ${IA_FOURNISSEUR:-simulation}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODELE: ${OPENAI_MODELE:-}
-      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
-      OLLAMA_MODELE: ${OLLAMA_MODELE:-qwen3:8b}
-      ORIGINE_FRONT: ${ORIGINE_FRONT:-http://localhost:8080}
-      # Un proxy de confiance devant l'API : le nginx du service front.
-      TRUST_PROXY: "1"
+    environment:
+      <<: &environnement-back
+        NODE_ENV: production
+        # Mots de passe en hexadécimal (voir .env.production.example) : ils
+        # s'insèrent dans ces URL sans caractère à échapper.
+        # SÉCURITÉ — Comptes RESTREINTS de l'API (moindre privilège).
+        DATABASE_URL: >-
+          postgresql://eduquizai_app:${POSTGRES_APP_MOT_DE_PASSE:?requis}@postgres:5432/eduquizai
+        MONGO_URL: >-
+          mongodb://eduquizai_app:${MONGO_APP_MOT_DE_PASSE}@mongo:27017/eduquizai?authSource=eduquizai
+        JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requis dans .env.production}
+        IA_FOURNISSEUR: ${IA_FOURNISSEUR:-simulation}
+        OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+        OPENAI_MODELE: ${OPENAI_MODELE:-}
+        OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+        OLLAMA_MODELE: ${OLLAMA_MODELE:-qwen3:4b}
+        OLLAMA_CONSERVATION: ${OLLAMA_CONSERVATION:-30m}
+        ORIGINE_FRONT: ${ORIGINE_FRONT:-http://localhost:8080}
+        # Un proxy de confiance devant l'API : le nginx du service front.
+        TRUST_PROXY: "1"
+      # Compte propriétaire : seulement pour créer les tables et le compte de l'API.
+      DATABASE_URL_ADMIN: postgresql://eduquizai:${POSTGRES_MOT_DE_PASSE}@postgres:5432/eduquizai
     depends_on:
       postgres:
         condition: service_healthy

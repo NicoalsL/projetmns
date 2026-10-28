@@ -4,16 +4,19 @@ const DELAI_ARRET_FORCE_MS = 10000;
 const INTERVALLE_PURGE_MS = 24 * 60 * 60 * 1000; // une fois par jour
 const INTERVALLE_NETTOYAGE_MS = 30000; // reprise des effacements après panne MongoDB
 
-// Point d'entrée du processus : vérifie la configuration et la base AVANT
-// d'ouvrir le port HTTP, pour échouer tout de suite avec un message clair
-// plutôt que de renvoyer des erreurs 500 aux premiers utilisateurs.
+// Rôle : démarrer le serveur (« npm start »), en 5 étapes :
+// 1. vérifier la configuration ; 2. vérifier la base ; 3. lancer les tâches
+// de fond (purge RGPD, nettoyage des quiz) ; 4. ouvrir le port HTTP ;
+// 5. préparer l'arrêt propre.
+// CHOIX — « Échouer tôt » : une configuration fausse arrête tout de suite le
+// serveur avec un message clair, plutôt que des erreurs 500 pour les utilisateurs.
 async function demarrer() {
   verifierEnvironnement();
 
-  // Chargés après la vérification : ils lisent process.env à l'import.
+  // Chargés APRÈS la vérification, car ils lisent la configuration dès leur chargement.
   const pool = require('./config/postgres');
   const { fermerMongo } = require('./config/mongo');
-  const { schemaEstPret } = require('./config/verificationSchema');
+  const { schemaEstPret, compteApiEstRestreint } = require('./config/verificationSchema');
   const app = require('./app');
 
   if (!(await schemaEstPret())) {
@@ -21,14 +24,25 @@ async function demarrer() {
     throw new Error('Schéma SQL absent. Exécuter npm run db:init avant de démarrer.');
   }
 
-  // RGPD : le journal des générations et le journal de sécurité ne sont
-  // conservés que 6 mois. La purge tourne au démarrage puis chaque jour ;
-  // unref() n'empêche pas l'arrêt.
+  // SÉCURITÉ — Moindre privilège : en production, refus de démarrer avec un compte
+  // PostgreSQL d'administration ; en développement, simple avertissement.
+  if (!(await compteApiEstRestreint())) {
+    if (process.env.NODE_ENV === 'production') {
+      await pool.end();
+      throw new Error(
+        'L\'API doit utiliser le compte PostgreSQL restreint (voir DATABASE_URL_ADMIN, npm run db:init).',
+      );
+    }
+    console.warn('SÉCURITÉ : l\'API utilise un compte PostgreSQL d\'administration (voir DATABASE_URL_ADMIN).');
+  }
+
+  // RGPD — Les deux journaux sont gardés 6 mois maximum : purge au démarrage,
+  // puis chaque jour (unref() = ce minuteur n'empêche pas l'arrêt du serveur).
   const generationIaDepot = require('./depots/generationIa.depot');
   const journalSecuriteDepot = require('./depots/journalSecurite.depot');
   async function purgerJournal() {
     try {
-      const nombre = await generationIaDepot.purgerAnciennes();
+      const nombre = await generationIaDepot.purgerAnciens();
       if (nombre > 0) console.log(`Journal IA : ${nombre} entrée(s) de plus de 6 mois supprimée(s)`);
       const nombreSecurite = await journalSecuriteDepot.purgerAnciens();
       if (nombreSecurite > 0) console.log(`Journal de sécurité : ${nombreSecurite} entrée(s) supprimée(s)`);
@@ -39,6 +53,7 @@ async function demarrer() {
   await purgerJournal();
   setInterval(purgerJournal, INTERVALLE_PURGE_MS).unref();
 
+  // Efface les quiz MongoDB des cours supprimés, au démarrage puis toutes les 30 s.
   const { reprendreNettoyage } = require('./services/nettoyageQuiz.service');
   await reprendreNettoyage();
   const minuteurNettoyage = setInterval(reprendreNettoyage, INTERVALLE_NETTOYAGE_MS);
@@ -49,8 +64,18 @@ async function demarrer() {
     console.log(`Serveur EduQuizAI démarré sur le port ${port}`);
   });
 
-  // Ferme les deux bases. Renvoie false si l'une n'a pas pu être fermée
-  // proprement (l'erreur est journalisée sans détail technique).
+  // Préchauffe l'IA locale sans bloquer le démarrage : l'API répond déjà.
+  // Si Ollama est arrêté, on le signale seulement ; on pourra générer plus tard.
+  const { prechaufferIa } = require('./ia/genererQuiz');
+  prechaufferIa()
+    .then((fait) => {
+      if (fait) {
+        console.log('Modèle d\'IA local préchargé en mémoire');
+      }
+    })
+    .catch((erreur) => console.error('Préchauffage du modèle d\'IA impossible', { code: erreur.code }));
+
+  // Ferme les deux bases. false si l'une n'a pas pu être fermée proprement.
   async function fermerBases() {
     try {
       await pool.end();
@@ -68,8 +93,8 @@ async function demarrer() {
     process.exitCode = 1;
   });
 
-  // Arrêt propre (docker stop, Ctrl+C) : on laisse les requêtes en cours se
-  // terminer et on ferme les connexions PostgreSQL et MongoDB. Si ça bloque, on force.
+  // Arrêt propre (docker stop, Ctrl+C) : on laisse finir les requêtes en cours,
+  // puis on ferme les bases. Si ça bloque plus de 10 s, on force.
   function arreter() {
     clearInterval(minuteurNettoyage);
     serveur.close(async () => {
@@ -84,8 +109,7 @@ async function demarrer() {
   return serveur;
 }
 
-// Démarre seulement si le fichier est lancé directement (node src/serveur.js),
-// pas quand il est importé.
+// Démarre seulement si on lance ce fichier (node src/serveur.js), pas s'il est importé.
 if (require.main === module) {
   demarrer().catch((erreur) => {
     console.error(erreur.message);

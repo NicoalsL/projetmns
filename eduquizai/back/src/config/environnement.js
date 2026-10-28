@@ -1,10 +1,16 @@
-// Un secret JWT faible ("change-moi") permettrait à n'importe qui de fabriquer
-// un jeton valide : on exige 32 octets aléatoires, soit 64 caractères hexa.
+// Rôle : vérifier les réglages du serveur (fichier .env) au démarrage.
+// Si un réglage est absent ou dangereux, le serveur REFUSE de démarrer, avec
+// un message clair, plutôt que de tourner mal configuré.
+// SÉCURITÉ — Les secrets restent dans .env, jamais dans Git (.gitignore).
+
+// Secret qui signe les jetons de connexion : 64 caractères hexadécimaux minimum
+// (32 octets aléatoires). Un secret faible comme « change-moi » permettrait à
+// n'importe qui de fabriquer de faux jetons.
 const REGEX_SECRET_JWT = /^[a-f0-9]{64,}$/i;
 
-// Vérifie la configuration au démarrage : mieux vaut refuser de démarrer avec
-// un message clair que tourner avec une configuration dangereuse ou cassée.
-// Reçoit env en paramètre pour pouvoir être testée sans toucher process.env.
+// Point d'entrée : appelé par serveur.js avant tout le reste.
+// env est un paramètre (process.env par défaut) pour pouvoir tester la fonction
+// avec de faux réglages, sans toucher aux vrais.
 function verifierEnvironnement(env = process.env) {
   if (!REGEX_SECRET_JWT.test(env.JWT_SECRET || '')) {
     throw new Error(
@@ -22,12 +28,16 @@ function verifierEnvironnement(env = process.env) {
     throw new Error('PORT doit être compris entre 1 et 65535.');
   }
 
+  if (env.NODE_ENV === 'production' && !env.ORIGINE_FRONT) {
+    throw new Error('ORIGINE_FRONT est obligatoire en production.');
+  }
   if (env.ORIGINE_FRONT) {
     verifierOrigineFront(env.ORIGINE_FRONT);
   }
 
-  // Nombre de proxys de confiance (voir app.js) : un petit entier, sinon un
-  // client pourrait faire croire à n'importe quelle adresse IP.
+  // Nombre de serveurs intermédiaires (proxys) devant l'API, voir app.js.
+  // Doit rester un petit entier : une valeur mal réglée permettrait à un client
+  // de faire croire à n'importe quelle adresse IP (et de contourner les limites).
   if (env.TRUST_PROXY !== undefined && !/^[1-5]$/.test(env.TRUST_PROXY)) {
     throw new Error('TRUST_PROXY doit être un entier entre 1 et 5 (nombre de proxys devant l\'API).');
   }
@@ -39,9 +49,10 @@ function verifierUrlMongo(valeur) {
   }
 }
 
-// "simulation" (par défaut) génère des quiz sans IA, pour développer sans clé.
-// "openai" exige une clé : sans elle, chaque génération échouerait.
-// "ollama" utilise un modèle local ; son URL, si elle est fournie, doit être valide.
+// Les 3 fournisseurs d'IA possibles :
+// - « simulation » (par défaut) : faux quiz sans IA, pour développer et tester sans clé ;
+// - « openai » : exige une clé, sinon chaque génération échouerait ;
+// - « ollama » : IA locale ; son adresse, si elle est donnée, doit être sûre (voir plus bas).
 function verifierFournisseurIa(env) {
   const fournisseur = env.IA_FOURNISSEUR || 'simulation';
   if (!['simulation', 'openai', 'ollama'].includes(fournisseur)) {
@@ -50,8 +61,34 @@ function verifierFournisseurIa(env) {
   if (fournisseur === 'openai' && !env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY est requise quand IA_FOURNISSEUR=openai.');
   }
-  if (fournisseur === 'ollama' && env.OLLAMA_URL && !/^https?:\/\/[^/]+/.test(env.OLLAMA_URL)) {
+  // Durée pendant laquelle Ollama garde le modèle en mémoire : 30m, 2h… ou -1 (toujours).
+  if (env.OLLAMA_CONSERVATION && !/^(\d+[smh]|-1)$/.test(env.OLLAMA_CONSERVATION)) {
+    throw new Error('OLLAMA_CONSERVATION doit valoir par exemple 30m, 2h ou -1.');
+  }
+  if (fournisseur === 'ollama' && env.OLLAMA_URL) {
+    verifierUrlOllama(env.OLLAMA_URL);
+  }
+}
+
+// Adresses « locales » : la machine elle-même, ou la machine hôte vue depuis
+// un conteneur Docker. Vers elles, les cours ne passent jamais sur un réseau.
+const HOTES_LOCAUX = ['localhost', '127.0.0.1', '[::1]', 'host.docker.internal'];
+
+// SÉCURITÉ — Ollama n'a pas de mot de passe. On accepte donc le HTTP non chiffré
+// seulement en local ; vers une autre machine, HTTPS est obligatoire, sinon les
+// cours des enseignants circuleraient en clair sur le réseau.
+function verifierUrlOllama(valeur) {
+  let adresse;
+  try {
+    adresse = new URL(valeur);
+  } catch {
     throw new Error('OLLAMA_URL doit être une URL HTTP(S), par exemple http://host.docker.internal:11434.');
+  }
+  if (!['http:', 'https:'].includes(adresse.protocol)) {
+    throw new Error('OLLAMA_URL doit être une URL HTTP(S), par exemple http://host.docker.internal:11434.');
+  }
+  if (adresse.protocol === 'http:' && !HOTES_LOCAUX.includes(adresse.hostname)) {
+    throw new Error('OLLAMA_URL vers une autre machine doit utiliser HTTPS (les cours ne circulent pas en clair).');
   }
 }
 
@@ -67,8 +104,9 @@ function verifierUrlBase(valeur) {
   }
 }
 
-// CORS compare l'origine exacte (protocole + hôte + port) : un chemin ou une
-// barre finale ("http://site/") ne correspondrait jamais et bloquerait le front.
+// Adresse du site autorisé à appeler l'API (règle CORS du navigateur).
+// Elle doit être exacte : protocole + nom + port, sans chemin ni « / » final.
+// Sinon elle ne correspondrait jamais et le site serait bloqué.
 function verifierOrigineFront(valeur) {
   let origine;
   try {
