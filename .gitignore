@@ -27,8 +27,7 @@ Thumbs.db
 
 # Résultats locaux de vérification
 **/coverage/
-audit/npm-cache/
-audit/screenshots/
+**/.vitest/
 
 # Dossier parasite créé par un outil Windows (variable %SystemDrive% non résolue)
 %SystemDrive%/
@@ -37,10 +36,13 @@ audit/screenshots/
 # dossier professionnel est nominatif -> jamais sur GitHub
 instructction/
 
-# Audit : seuls les rapports .md sont versionnés (pas les logs, scripts,
-# caches ni l'extraction texte du CDC confidentiel)
-audit/*
-!audit/*.md
+# Documentation, préparation de l'examen et consignes des assistants IA :
+# gardées sur le poste, le dépôt ne contient que le projet
+documentation/
+/README.md
+AGENTS.md
+CLAUDE.md
+*.code-workspace
 
 # Sauvegardes des bases (données personnelles) — jamais dans Git
 **/sauvegardes/
