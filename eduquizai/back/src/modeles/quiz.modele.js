@@ -1,4 +1,4 @@
-// Rôle : un quiz (document de la collection MongoDB « quiz »), avec ses règles métier.
+// Rôle : un quiz (ligne PostgreSQL + questions JSONB), avec ses règles métier.
 // CHOIX — POO : le cycle de vie (brouillon -> validé -> exportable) et la façon
 // de présenter un quiz à l'export appartiennent au quiz ; le service les lui demande.
 

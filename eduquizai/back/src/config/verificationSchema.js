@@ -3,7 +3,7 @@ const pool = require('./postgres');
 // Rôle : vérifier, au démarrage, que PostgreSQL a bien toutes ses tables.
 // Si l'une manque, c'est que le script de création n'a pas été lancé (npm run db:init).
 
-const TABLES_REQUISES = ['utilisateur', 'cours', 'generation_ia', 'journal_securite', 'nettoyage_quiz'];
+const TABLES_REQUISES = ['utilisateur', 'cours', 'generation_ia', 'journal_securite', 'quiz'];
 
 // Renvoie true si tout est en place. Une seule requête SQL :
 // - to_regclass donne NULL pour une table absente (au lieu de planter), d'où un simple vrai / faux ;

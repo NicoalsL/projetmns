@@ -69,7 +69,7 @@ class CoursDepot extends DepotPostgres {
   // Transaction qui « verrouille » le cours (FOR UPDATE) pendant une action.
   // Image : on pose la main sur la ligne du cours ; personne ne peut la supprimer
   // tant qu'on ne l'a pas relâchée (COMMIT ou ROLLBACK).
-  // Sert à écrire un quiz dans MongoDB seulement si le cours existe encore.
+  // Sert à écrire un quiz en PostgreSQL seulement si le cours existe encore.
   // Renvoie le résultat de l'action, ou null si le cours n'existe plus.
   async avecCoursVerrouille(idCours, idUtilisateur, action) {
     try {

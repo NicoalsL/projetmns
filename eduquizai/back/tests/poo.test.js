@@ -10,7 +10,7 @@ const DepotPostgres = require('../src/depots/depotPostgres');
 const JournalPostgres = require('../src/depots/journalPostgres');
 const coursDepot = require('../src/depots/cours.depot');
 const utilisateurDepot = require('../src/depots/utilisateur.depot');
-const nettoyageQuizDepot = require('../src/depots/nettoyageQuiz.depot');
+const quizDepot = require('../src/depots/quiz.depot');
 const generationIaDepot = require('../src/depots/generationIa.depot');
 const journalSecuriteDepot = require('../src/depots/journalSecurite.depot');
 const FournisseurIa = require('../src/ia/fournisseurs/fournisseurIa');
@@ -93,7 +93,7 @@ describe('Hiérarchie des dépôts', () => {
   test.each([
     [coursDepot],
     [utilisateurDepot],
-    [nettoyageQuizDepot],
+    [quizDepot],
   ])('%#. les dépôts SQL héritent de DepotPostgres', (depot) => {
     expect(depot).toBeInstanceOf(DepotPostgres);
     expect(depot).not.toBeInstanceOf(JournalPostgres);

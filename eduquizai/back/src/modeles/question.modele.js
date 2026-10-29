@@ -15,7 +15,7 @@ const { ErreurQuestion } = require('../utilitaires/erreurs');
 //
 // SÉCURITÉ — Les mêmes règles valident la réponse de l'IA (jamais fiable par
 // principe) et les modifications de l'enseignant : aucune porte dérobée.
-// Format en base (document MongoDB) : documentation/conception/base-de-donnees.md.
+// Format en base (JSONB PostgreSQL) : documentation/conception/base-de-donnees.md.
 
 const LONGUEUR_MAX_ENONCE = 500;
 const LONGUEUR_MAX_CHOIX = 200;
@@ -126,7 +126,7 @@ class Question {
     return [];
   }
 
-  // Version « données seules », pour MongoDB et pour l'API (sans les méthodes).
+  // Version « données seules », pour PostgreSQL JSONB et pour l'API (sans les méthodes).
   versDocument() {
     return { ...this };
   }

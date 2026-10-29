@@ -8,8 +8,6 @@ jest.mock('../src/depots/utilisateur.depot', () => ({
 }));
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
 jest.mock('../src/depots/journalSecurite.depot');
-// MongoDB simulé : /pret l'interroge, mais ces tests portent sur PostgreSQL.
-jest.mock('../src/config/mongo', () => ({ mongoEstPret: jest.fn().mockResolvedValue(true) }));
 // Contrôle de révocation des sessions simulé (testé dans session.test.js) :
 // fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
 jest.mock('../src/services/session.service', () => ({

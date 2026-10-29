@@ -11,7 +11,7 @@ class GenerationIaDepot extends JournalPostgres {
   }
 
   // Note un appel à l'IA (réussi ou non) avec sa durée.
-  // livraison = 'en_attente' tant que le quiz n'est pas enregistré dans MongoDB.
+  // livraison = 'en_attente' jusqu'à l'enregistrement SQL du quiz.
   // $1::varchar : $1 sert deux fois ; sans type précisé, PostgreSQL refusait
   // la requête (« inconsistent types ») et toute génération échouait (bug corrigé).
   enregistrer({ statut, dureeMs, nombreQuestionsDemandees, idUtilisateur, idCours }) {

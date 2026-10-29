@@ -2,9 +2,7 @@
 // journal des générations (RGPD). Dépôts et base simulés.
 
 jest.mock('../src/depots/utilisateur.depot');
-jest.mock('../src/depots/quiz.depot');
 jest.mock('../src/depots/journalSecurite.depot');
-jest.mock('../src/services/nettoyageQuiz.service');
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
 // Contrôle de révocation des sessions simulé (testé dans session.test.js) :
 // fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
@@ -18,8 +16,6 @@ jest.mock('../src/services/session.service', () => ({
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const utilisateurDepot = require('../src/depots/utilisateur.depot');
-const quizDepot = require('../src/depots/quiz.depot');
-const { reprendreNettoyage } = require('../src/services/nettoyageQuiz.service');
 const pool = require('../src/config/postgres');
 const generationIaDepot = jest.requireActual('../src/depots/generationIa.depot');
 const app = require('../src/app');
@@ -109,35 +105,15 @@ describe('prolongation de la session (POST /api/compte/session)', () => {
 });
 
 describe('suppression du compte (DELETE /api/compte)', () => {
-  test('supprime le compte SQL puis reprend les demandes durables de nettoyage, réponse 204', async () => {
+  test('la suppression du compte en SQL entraîne les cascades PostgreSQL', async () => {
     const id = prochainId++;
-    const ordreAppels = [];
     utilisateurDepot.trouverParId.mockResolvedValue({ id_utilisateur: id, mot_de_passe_hache: hacheMotDePasse });
-    reprendreNettoyage.mockImplementation(async () => ordreAppels.push('nettoyage'));
-    utilisateurDepot.supprimer.mockImplementation(async () => ordreAppels.push('sql'));
+    utilisateurDepot.supprimer.mockResolvedValue();
 
     const reponse = await supprimerCompte(id, { motDePasse: MOT_DE_PASSE });
 
     expect(reponse.status).toBe(204);
-    expect(reprendreNettoyage).toHaveBeenCalled();
     expect(utilisateurDepot.supprimer).toHaveBeenCalledWith(id);
-    expect(ordreAppels).toEqual(['sql', 'nettoyage']);
-    // Effacement complet, y compris des quiz orphelins antérieurs à la file de nettoyage.
-    expect(quizDepot.supprimerParUtilisateur).toHaveBeenCalledWith(id);
-  });
-
-  test('une panne MongoDB après la suppression SQL n\'empêche pas l\'effacement du compte (204)', async () => {
-    const id = prochainId++;
-    utilisateurDepot.trouverParId.mockResolvedValue({ id_utilisateur: id, mot_de_passe_hache: hacheMotDePasse });
-    const panneMongo = Object.assign(new Error('panne'), { code: 'ECONNREFUSED' });
-    quizDepot.supprimerParUtilisateur.mockRejectedValueOnce(panneMongo);
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    const reponse = await supprimerCompte(id, { motDePasse: MOT_DE_PASSE });
-
-    expect(reponse.status).toBe(204);
-    expect(console.error).toHaveBeenCalledWith('Effacement des quiz du compte différé', { code: 'ECONNREFUSED' });
-    console.error.mockRestore();
   });
 
   test('mauvais mot de passe : 403 (pas 401, la session reste valide) et rien n\'est supprimé', async () => {
@@ -147,7 +123,6 @@ describe('suppression du compte (DELETE /api/compte)', () => {
     const reponse = await supprimerCompte(id, { motDePasse: 'incorrect' });
 
     expect(reponse.status).toBe(403);
-    expect(quizDepot.supprimerParUtilisateur).not.toHaveBeenCalled();
     expect(utilisateurDepot.supprimer).not.toHaveBeenCalled();
   });
 
@@ -158,7 +133,7 @@ describe('suppression du compte (DELETE /api/compte)', () => {
     expect(utilisateurDepot.trouverParId).not.toHaveBeenCalled();
   });
 
-  test('si PostgreSQL échoue, aucun nettoyage Mongo ne commence', async () => {
+  test('si PostgreSQL échoue, le compte ne peut pas être supprimé', async () => {
     const id = prochainId++;
     jest.spyOn(console, 'error').mockImplementation(() => {});
     utilisateurDepot.trouverParId.mockResolvedValue({ id_utilisateur: id, mot_de_passe_hache: hacheMotDePasse });
@@ -167,7 +142,6 @@ describe('suppression du compte (DELETE /api/compte)', () => {
     const reponse = await supprimerCompte(id, { motDePasse: MOT_DE_PASSE });
 
     expect(reponse.status).toBe(500);
-    expect(reprendreNettoyage).not.toHaveBeenCalled();
   });
 
   test('limite à 5 essais de confirmation par compte et par quart d\'heure', async () => {

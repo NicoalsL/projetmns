@@ -13,7 +13,7 @@ const LONGUEUR_MAX_TITRE = 200;
 const NIVEAUX = ['primaire', 'college', 'lycee', 'superieur'];
 const DIFFICULTES = ['facile', 'moyen', 'difficile'];
 const LONGUEUR_MAX_REPONSE_DONNEE = 1000;
-// Identifiant MongoDB (ObjectId) = 24 caractères hexadécimaux.
+// ID SQL conservé sur 24 caractères hexadécimaux pour préserver les anciennes URLs.
 const REGEX_ID_QUIZ = /^[a-f0-9]{24}$/i;
 
 // Numéro de version du quiz lu par le navigateur, obligatoire pour le modifier.
@@ -70,8 +70,8 @@ function validerGeneration(requete, reponse, suite) {
   suite();
 }
 
-// SÉCURITÉ — Identifiant de quiz = forme d'un identifiant MongoDB, sinon refus.
-// Évite une erreur 500 et bloque l'injection NoSQL (ex. {"$ne": null}).
+// SÉCURITÉ — Identifiant de quiz = 24 caractères hexadécimaux, sinon refus.
+// Évite une erreur 500 ; les requêtes SQL utilisent aussi des paramètres.
 function validerIdentifiantQuiz(requete, reponse, suite) {
   const valeur = requete.params.idQuiz;
   // Style défensif : on vérifie d'abord que c'est bien du texte (trouvé par le fuzzing).

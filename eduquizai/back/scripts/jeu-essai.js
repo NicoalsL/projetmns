@@ -10,7 +10,7 @@
 
 const bcrypt = require('bcryptjs');
 const pool = require('../src/config/postgres');
-const { collectionQuiz, fermerMongo } = require('../src/config/mongo');
+const quizDepot = require('../src/depots/quiz.depot');
 
 const DOMAINE_DEMO = '@demo.eduquizai.test';
 const MOT_DE_PASSE_DEMO = 'Demo-EduQuizAI-2026';
@@ -80,14 +80,13 @@ const QUESTIONS_PHOTOSYNTHESE = [
   },
 ];
 
-async function supprimerDonneesDemo(collection) {
+async function supprimerDonneesDemo() {
   const anciens = await pool.query(
     'SELECT id_utilisateur FROM utilisateur WHERE email LIKE $1',
     ['%' + DOMAINE_DEMO],
   );
   const ids = anciens.rows.map((ligne) => ligne.id_utilisateur);
   if (ids.length > 0) {
-    await collection.deleteMany({ id_utilisateur: { $in: ids } });
     // Cours et journal suivent par ON DELETE CASCADE.
     await pool.query('DELETE FROM utilisateur WHERE id_utilisateur = ANY($1::int[])', [ids]);
   }
@@ -95,8 +94,7 @@ async function supprimerDonneesDemo(collection) {
 }
 
 async function principal() {
-  const collection = await collectionQuiz();
-  const supprimes = await supprimerDonneesDemo(collection);
+  const supprimes = await supprimerDonneesDemo();
   const hache = await bcrypt.hash(MOT_DE_PASSE_DEMO, 10);
 
   const idsComptes = [];
@@ -129,7 +127,7 @@ async function principal() {
   );
 
   const maintenant = new Date();
-  await collection.insertOne({
+  await quizDepot.creer({
     id_generation: generation.rows[0].id_generation,
     id_cours: idsCours[0],
     id_utilisateur: idsComptes[0],
@@ -155,5 +153,4 @@ principal()
   })
   .finally(async () => {
     await pool.end();
-    await fermerMongo();
   });

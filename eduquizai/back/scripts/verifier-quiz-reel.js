@@ -1,4 +1,4 @@
-// Vérification de bout en bout des quiz sur la VRAIE API, PostgreSQL et MongoDB
+// Vérification de bout en bout des quiz sur la VRAIE API et PostgreSQL
 // (complément des tests Jest, qui simulent les bases et l'IA).
 //
 // À lancer avec la stack démarrée :
@@ -6,12 +6,11 @@
 //
 // Utilise le fournisseur configuré (IA_FOURNISSEUR ; "simulation" par défaut,
 // donc aucun coût). Crée deux comptes de test au nom unique et les supprime à
-// la fin, avec leurs cours, générations (cascade SQL) et quiz (MongoDB).
+// la fin, avec leurs cours, générations et quiz (cascade SQL).
 
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
 const pool = require('../src/config/postgres');
-const { collectionQuiz, fermerMongo } = require('../src/config/mongo');
 
 function lireJetonCookie(reponse) {
   const cookie = reponse.headers.get('set-cookie') || '';
@@ -23,7 +22,6 @@ const URL_API = process.env.API_URL || 'http://127.0.0.1:3000';
 const prefixe = 'verification-quiz-' + randomUUID();
 const emailsDeTest = [prefixe + '-a@example.test', prefixe + '-b@example.test'];
 const motDePasse = 'Test-local-' + randomUUID();
-const idsDeTest = [];
 let nombreVerifications = 0;
 
 const TEXTE_COURS = [
@@ -62,7 +60,6 @@ async function inscrire(email, nom) {
     corps: { nom, email, motDePasse, consentementRgpd: true },
   });
   verifier(inscription.statut, 201, 'inscription ' + nom);
-  idsDeTest.push(inscription.donnees.utilisateur.id_utilisateur);
   return inscription.donnees.jeton;
 }
 
@@ -104,11 +101,14 @@ async function executer() {
   verifier(journal.rows[0].statut, 'succes', 'génération tracée en succès');
   verifier(journal.rows[0].nombre_questions_demandees, 6, 'nombre de questions tracé');
 
-  // Document MongoDB : rattaché à l'enseignant A et à la génération tracée.
-  const collection = await collectionQuiz();
-  const documents = await collection.find({ id_cours: idCours }).toArray();
-  verifier(documents.length, 1, 'un document dans la collection quiz');
-  verifier(documents[0].id_utilisateur, idsDeTest[0], 'quiz rattaché à l\'enseignant du JWT');
+  // Ligne SQL : rattachée à l'enseignant A et à la génération tracée.
+  const lignes = await pool.query(
+    'SELECT id_utilisateur, id_generation, jsonb_array_length(questions) AS nombre_questions FROM quiz WHERE id_cours = $1',
+    [idCours],
+  );
+  verifier(lignes.rowCount, 1, 'un quiz dans la table SQL');
+  verifier(lignes.rows[0].id_utilisateur, idsDeTest[0], 'quiz rattaché au JWT');
+  verifier(lignes.rows[0].nombre_questions, 6, 'questions JSONB retrouvées');
 
   // --- Isolation ---
   const urlQuiz = '/api/quiz/' + quiz.id_quiz;
@@ -147,25 +147,21 @@ async function executer() {
   const enonceEnregistre = modification.donnees.questions[0].enonce;
   verifier(enonceEnregistre, 'Énoncé corrigé par l\'enseignant ?', 'énoncé modifié en base');
 
-  // --- Suppression du cours : ses quiz MongoDB disparaissent aussi ---
+  // --- Suppression du cours : ses quiz SQL suivent par cascade ---
   const suppressionCours = await appelerApi('/api/cours/' + idCours, { method: 'DELETE', jeton: jetonA });
   verifier(suppressionCours.statut, 204, 'cours supprimé');
-  verifier(await collection.countDocuments({ id_cours: idCours }), 0, 'quiz supprimés avec le cours');
+  const reste = await pool.query('SELECT 1 FROM quiz WHERE id_cours = $1', [idCours]);
+  verifier(reste.rowCount, 0, 'quiz supprimés avec le cours');
 }
 
 async function principal() {
   try {
     await executer();
-    console.log(nombreVerifications + ' vérifications réussies sur la vraie API, PostgreSQL et MongoDB.');
+    console.log(nombreVerifications + ' vérifications réussies sur la vraie API et PostgreSQL.');
   } finally {
     // Nettoyage systématique : seuls les comptes créés par ce script.
-    if (idsDeTest.length > 0) {
-      const collection = await collectionQuiz();
-      await collection.deleteMany({ id_utilisateur: { $in: idsDeTest } });
-    }
     await pool.query('DELETE FROM utilisateur WHERE email = ANY($1::text[])', [emailsDeTest]);
     await pool.end();
-    await fermerMongo();
     console.log('Comptes, cours et quiz de test nettoyés.');
   }
 }

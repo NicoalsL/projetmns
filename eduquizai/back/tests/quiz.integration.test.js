@@ -103,7 +103,7 @@ beforeEach(() => {
 });
 
 describe('régressions de cohérence et de concurrence', () => {
-  test('un quiz dont le cours a disparu reste inaccessible avant son nettoyage Mongo', async () => {
+  test('un quiz dont le cours a disparu reste inaccessible', async () => {
     coursDepot.trouverParId.mockResolvedValue(null);
 
     const reponse = await appeler('/api/quiz/' + ID_QUIZ);
@@ -138,10 +138,11 @@ describe('régressions de cohérence et de concurrence', () => {
       ID_ENSEIGNANT,
       expect.objectContaining({ statut: 'valide' }),
       0,
+      undefined,
     );
   });
 
-  test('une suppression pendant l’appel IA empêche toute insertion Mongo tardive', async () => {
+  test('une suppression pendant l’appel IA empêche toute insertion SQL tardive', async () => {
     coursDepot.avecCoursVerrouille.mockResolvedValue(null);
     genererQuiz.mockResolvedValue({ questions: questionsValides, fournisseur: 'simulation' });
 
@@ -155,7 +156,7 @@ describe('régressions de cohérence et de concurrence', () => {
     expect(generationIaDepot.marquerLivraison).toHaveBeenCalledWith(12, expect.any(Number), 'echec');
   });
 
-  test('une panne Mongo ne laisse pas une livraison annoncée comme enregistrée', async () => {
+  test('une erreur SQL ne laisse pas une livraison annoncée comme enregistrée', async () => {
     genererQuiz.mockResolvedValue({ questions: questionsValides, fournisseur: 'simulation' });
     quizDepot.creer.mockRejectedValue(new Error('panne'));
 

@@ -2,11 +2,10 @@ const verifierEnvironnement = require('./config/environnement');
 
 const DELAI_ARRET_FORCE_MS = 10000;
 const INTERVALLE_PURGE_MS = 24 * 60 * 60 * 1000; // une fois par jour
-const INTERVALLE_NETTOYAGE_MS = 30000; // reprise des effacements après panne MongoDB
 
 // Rôle : démarrer le serveur (« npm start »), en 5 étapes :
-// 1. vérifier la configuration ; 2. vérifier la base ; 3. lancer les tâches
-// de fond (purge RGPD, nettoyage des quiz) ; 4. ouvrir le port HTTP ;
+// 1. vérifier la configuration ; 2. vérifier PostgreSQL ; 3. lancer les tâches
+// de fond (purge RGPD) ; 4. ouvrir le port HTTP ;
 // 5. préparer l'arrêt propre.
 // CHOIX — « Échouer tôt » : une configuration fausse arrête tout de suite le
 // serveur avec un message clair, plutôt que des erreurs 500 pour les utilisateurs.
@@ -15,7 +14,6 @@ async function demarrer() {
 
   // Chargés APRÈS la vérification, car ils lisent la configuration dès leur chargement.
   const pool = require('./config/postgres');
-  const { fermerMongo } = require('./config/mongo');
   const { schemaEstPret, compteApiEstRestreint } = require('./config/verificationSchema');
   const app = require('./app');
 
@@ -53,12 +51,6 @@ async function demarrer() {
   await purgerJournal();
   setInterval(purgerJournal, INTERVALLE_PURGE_MS).unref();
 
-  // Efface les quiz MongoDB des cours supprimés, au démarrage puis toutes les 30 s.
-  const { reprendreNettoyage } = require('./services/nettoyageQuiz.service');
-  await reprendreNettoyage();
-  const minuteurNettoyage = setInterval(reprendreNettoyage, INTERVALLE_NETTOYAGE_MS);
-  minuteurNettoyage.unref();
-
   const port = Number(process.env.PORT || 3000);
   const serveur = app.listen(port, () => {
     console.log(`Serveur EduQuizAI démarré sur le port ${port}`);
@@ -75,14 +67,13 @@ async function demarrer() {
     })
     .catch((erreur) => console.error('Préchauffage du modèle d\'IA impossible', { code: erreur.code }));
 
-  // Ferme les deux bases. false si l'une n'a pas pu être fermée proprement.
+  // Une seule base PostgreSQL à fermer proprement.
   async function fermerBases() {
     try {
       await pool.end();
-      await fermerMongo();
       return true;
     } catch (erreur) {
-      console.error('Fermeture des bases de données impossible', { code: erreur.code });
+      console.error('Fermeture de PostgreSQL impossible', { code: erreur.code });
       return false;
     }
   }
@@ -96,7 +87,6 @@ async function demarrer() {
   // Arrêt propre (docker stop, Ctrl+C) : on laisse finir les requêtes en cours,
   // puis on ferme les bases. Si ça bloque plus de 10 s, on force.
   function arreter() {
-    clearInterval(minuteurNettoyage);
     serveur.close(async () => {
       const fermetureReussie = await fermerBases();
       process.exit(fermetureReussie ? 0 : 1);

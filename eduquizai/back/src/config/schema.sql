@@ -1,4 +1,4 @@
--- Rôle : créer les tables PostgreSQL d'EduQuizAI (comptes, cours, journaux).
+-- Rôle : créer toutes les tables PostgreSQL d'EduQuizAI (quiz JSONB compris).
 -- Conception (MCD, MLD, MPD) : documentation/conception/base-de-donnees.md.
 -- Script « idempotent » : il ne crée que ce qui n'existe pas encore (IF NOT EXISTS).
 -- On peut donc le relancer à chaque démarrage sans jamais perdre de données.
@@ -69,30 +69,39 @@ ALTER TABLE generation_ia ADD COLUMN IF NOT EXISTS livraison VARCHAR(20)
   NOT NULL DEFAULT 'inconnu'
   CHECK (livraison IN ('inconnu', 'en_attente', 'enregistre', 'echec'));
 
--- File d'attente des quiz MongoDB à effacer après la suppression d'un cours.
--- Pas de clé étrangère : la demande doit survivre à la suppression du cours ou du compte.
-CREATE TABLE IF NOT EXISTS nettoyage_quiz (
-  id_cours INTEGER PRIMARY KEY,
-  id_utilisateur INTEGER NOT NULL,
-  date_demande TIMESTAMP NOT NULL DEFAULT now()
-);
-
--- Déclencheur (trigger) : à chaque suppression d'un cours, la base écrit
--- automatiquement une demande « effacer ses quiz » dans nettoyage_quiz.
--- Il fonctionne aussi quand un compte entier est supprimé (cascade).
--- La suppression et la demande sont enregistrées ensemble, ou pas du tout.
-CREATE OR REPLACE FUNCTION demander_nettoyage_quiz() RETURNS trigger AS $$
-BEGIN
-  INSERT INTO nettoyage_quiz (id_cours, id_utilisateur)
-  VALUES (OLD.id_cours, OLD.id_utilisateur)
-  ON CONFLICT (id_cours) DO NOTHING;
-  RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER suppression_cours_nettoyage
-AFTER DELETE ON cours FOR EACH ROW EXECUTE FUNCTION demander_nettoyage_quiz();
-
 -- SÉCURITÉ — Révocation des sessions : ce numéro est recopié dans chaque jeton.
 -- Se déconnecter l'augmente de 1, ce qui rend invalides tous les jetons déjà émis.
 ALTER TABLE utilisateur ADD COLUMN IF NOT EXISTS version_jeton INTEGER NOT NULL DEFAULT 0;
+
+-- Quiz et questions : un quiz = une ligne SQL, avec ses questions intégrées
+-- dans JSONB (QCM, vrai/faux et ouverte). Même souplesse documentaire, mais
+-- clés étrangères, transactions et cascades directement garanties par PostgreSQL.
+-- L'ID en hexadécimal conserve les anciennes URL après migration de MongoDB.
+-- La référence vers la génération est facultative : les journaux IA sont purgés
+-- après 6 mois ; ON DELETE SET NULL préserve le quiz de l'enseignant.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_cours_proprietaire
+  ON cours(id_cours, id_utilisateur);
+
+CREATE TABLE IF NOT EXISTS quiz (
+  id_quiz VARCHAR(24) PRIMARY KEY CHECK (id_quiz ~ '^[a-f0-9]{24}$'),
+  id_generation INTEGER REFERENCES generation_ia(id_generation) ON DELETE SET NULL,
+  id_cours INTEGER NOT NULL,
+  id_utilisateur INTEGER NOT NULL,
+  titre VARCHAR(200) NOT NULL,
+  statut VARCHAR(20) NOT NULL CHECK (statut IN ('brouillon', 'valide')),
+  fournisseur VARCHAR(50),
+  modele VARCHAR(100),
+  parametres JSONB,
+  questions JSONB NOT NULL
+    CHECK (jsonb_typeof(questions) = 'array' AND jsonb_array_length(questions) BETWEEN 1 AND 20),
+  date_creation TIMESTAMP NOT NULL DEFAULT now(),
+  date_modification TIMESTAMP NOT NULL DEFAULT now(),
+  date_validation TIMESTAMP,
+  revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 0),
+  CONSTRAINT fk_quiz_cours_proprietaire
+    FOREIGN KEY (id_cours, id_utilisateur)
+    REFERENCES cours(id_cours, id_utilisateur) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_cours_proprietaire
+  ON quiz(id_cours, id_utilisateur, date_creation DESC);

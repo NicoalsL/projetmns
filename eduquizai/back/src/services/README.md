@@ -13,7 +13,6 @@ classe fille d'`ErreurMetier` : `new ErreurIntrouvable('Cours introuvable')`, `n
 | `cours.service.js` | CRUD des cours ; 404 si absent **ou** appartenant à un autre. |
 | `quiz.service.js` | **Cœur du projet** : générer, modifier, valider, exporter, régénérer, corriger. |
 | `journalSecurite.service.js` | Trace connexions, échecs, suppressions, exports (OWASP A09). |
-| `nettoyageQuiz.service.js` | Efface dans MongoDB les quiz des cours supprimés, même après une panne. |
 
 ## Règles métier clés
 
@@ -24,6 +23,8 @@ classe fille d'`ErreurMetier` : `new ErreurIntrouvable('Cours introuvable')`, `n
 - **Révision** (verrou optimiste) : modifier un quiz exige le numéro de version lu ;
   s'il a changé dans un autre onglet → 409 « Rechargez ».
 - Chaque appel à l'IA est **chronométré et journalisé** (`generation_ia`), réussi ou non.
+- **Enregistrement atomique** du quiz et de la livraison IA avec PostgreSQL.
+- **Suppression en cascade** : un cours supprimé emporte directement ses quiz SQL.
 
 ## Choix de sécurité
 

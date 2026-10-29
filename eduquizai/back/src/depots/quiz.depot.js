@@ -1,99 +1,132 @@
-const { ObjectId } = require('mongodb');
-const { collectionQuiz } = require('../config/mongo');
+const { randomBytes } = require('node:crypto');
+const DepotPostgres = require('./depotPostgres');
 
-// Rôle : seul fichier qui parle à la collection MongoDB « quiz ».
-// SÉCURITÉ — Chaque requête filtre sur id_utilisateur : impossible de lire,
-// modifier ou supprimer le quiz d'un autre.
-// Valeurs typées (nombres, ObjectId), jamais d'objet venu du navigateur :
-// pas d'injection NoSQL.
-// CHOIX — MongoDB pour les quiz : un quiz = un document avec sa liste de
-// questions de formes différentes (QCM, vrai/faux, ouverte), lu d'un seul bloc.
-// CHOIX — Une classe, comme les dépôts PostgreSQL, mais SANS classe mère : c'est
-// le seul dépôt MongoDB, une classe mère n'aurait qu'une seule fille.
-
-class QuizDepot {
-  // Document MongoDB -> objet pour l'API (_id devient id_quiz, en texte).
-  // Méthode privée (#) : un détail interne du dépôt.
-  #formater(document) {
-    if (!document) {
-      return null;
-    }
-    const { _id, ...reste } = document;
-    // Vieux quiz sans numéro de version : révision 0.
-    return { id_quiz: _id.toString(), ...reste, revision: document.revision ?? 0 };
+// Tous les quiz sont stockés en PostgreSQL. Les questions de formes variables
+// (QCM, vrai/faux, ouverte) restent dans une colonne JSONB du même enregistrement.
+// Les identifiants restent sur 24 caractères hexadécimaux pour conserver
+// les liens/API historiques lors de la migration depuis MongoDB.
+class QuizDepot extends DepotPostgres {
+  // La colonne revision est NOT NULL ; les anciens quiz migrés ont la valeur 0.
+  #formater(ligne) {
+    return ligne || null;
   }
 
   // Nouveau quiz, révision 1 (+1 à chaque modification).
-  async creer(quiz) {
-    const collection = await collectionQuiz();
-    const document = { ...quiz, revision: 1 };
-    const resultat = await collection.insertOne(document);
-    return this.#formater({ ...document, _id: resultat.insertedId });
+  // client optionnel : partage la transaction avec generation_ia et cours.
+  async creer(quiz, client) {
+    const idQuiz = randomBytes(12).toString('hex');
+    const parametres = quiz.parametres === null || quiz.parametres === undefined
+      ? null
+      : JSON.stringify(quiz.parametres);
+
+    const resultat = await this.executer(
+      `INSERT INTO quiz
+       (id_quiz, id_generation, id_cours, id_utilisateur, titre, statut,
+        fournisseur, modele, parametres, questions, date_creation,
+        date_modification, date_validation, revision)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb,
+               $10::jsonb, $11, $12, $13, 1)
+       RETURNING *`,
+      [
+        idQuiz,
+        quiz.id_generation,
+        quiz.id_cours,
+        quiz.id_utilisateur,
+        quiz.titre,
+        quiz.statut,
+        quiz.fournisseur ?? null,
+        quiz.modele ?? null,
+        parametres,
+        JSON.stringify(quiz.questions),
+        quiz.date_creation,
+        quiz.date_modification,
+        quiz.date_validation,
+      ],
+      client,
+    );
+
+    return this.#formater(resultat.rows[0]);
   }
 
   // Liste résumée : pas les questions, seulement leur nombre (moins de données).
   async listerParCours(idCours, idUtilisateur) {
-    const collection = await collectionQuiz();
-    const documents = await collection
-      .find(
-        { id_cours: idCours, id_utilisateur: idUtilisateur },
-        {
-          projection: {
-            titre: 1,
-            statut: 1,
-            fournisseur: 1,
-            date_creation: 1,
-            nombre_questions: { $size: '$questions' },
-          },
-        },
-      )
-      .sort({ date_creation: -1 })
-      .toArray();
-    return documents.map((document) => this.#formater(document));
+    const lignes = await this.trouverToutes(
+      `SELECT id_quiz, titre, statut, fournisseur, date_creation,
+              jsonb_array_length(questions) AS nombre_questions, revision
+       FROM quiz WHERE id_cours = $1 AND id_utilisateur = $2
+       ORDER BY date_creation DESC`,
+      [idCours, idUtilisateur],
+    );
+
+    return lignes.map((ligne) => this.#formater(ligne));
   }
 
   // Un quiz par son identifiant ET son propriétaire (null sinon).
   async trouverParId(idQuiz, idUtilisateur) {
-    const collection = await collectionQuiz();
-    const document = await collection.findOne({ _id: new ObjectId(idQuiz), id_utilisateur: idUtilisateur });
-    return this.#formater(document);
-  }
-
-  // Modifie et renvoie le quiz à jour, ou null s'il n'existe pas pour cet enseignant.
-  async mettreAJour(idQuiz, idUtilisateur, modifications, revision) {
-    const collection = await collectionQuiz();
-    // Verrou optimiste : modifier seulement si la révision est celle attendue, puis +1.
-    // Vérifier et modifier en UNE opération : rien ne peut se glisser entre les deux.
-    const filtreRevision = revision === 0
-      ? { $or: [{ revision: 0 }, { revision: { $exists: false } }] }
-      : { revision };
-    const document = await collection.findOneAndUpdate(
-      { _id: new ObjectId(idQuiz), id_utilisateur: idUtilisateur, ...filtreRevision },
-      { $set: modifications, $inc: { revision: 1 } },
-      { returnDocument: 'after' },
+    const ligne = await this.trouverUne(
+      'SELECT * FROM quiz WHERE id_quiz = $1 AND id_utilisateur = $2',
+      [idQuiz, idUtilisateur],
     );
-    return this.#formater(document);
+
+    return this.#formater(ligne);
   }
 
-  // Supprime un quiz de cet enseignant ; false si rien n'a été supprimé (-> 404).
+  // Verrou optimiste : modifier seulement si la révision attendue est encore là.
+  // Seules ces colonnes peuvent être modifiées : la liste empêche qu'un nom
+  // de colonne envoyé par un appelant devienne une instruction SQL.
+  async mettreAJour(idQuiz, idUtilisateur, modifications, revision, client) {
+    const champsAutorises = [
+      'titre',
+      'statut',
+      'questions',
+      'parametres',
+      'date_validation',
+      'date_modification',
+    ];
+    const champs = Object.entries(modifications);
+
+    if (champs.length === 0 || champs.some(([nom]) => !champsAutorises.includes(nom))) {
+      throw new TypeError('Colonnes de quiz non autorisées');
+    }
+
+    const valeurs = [];
+    const affectations = [];
+
+    for (const [nom, valeur] of champs) {
+      const estJson = nom === 'questions' || nom === 'parametres';
+      const valeurSql = estJson && valeur !== null ? JSON.stringify(valeur) : valeur;
+      valeurs.push(valeurSql);
+
+      const numeroParametre = valeurs.length;
+      const conversion = estJson ? '::jsonb' : '';
+      affectations.push(`${nom} = $${numeroParametre}${conversion}`);
+    }
+
+    valeurs.push(idQuiz, idUtilisateur, revision);
+    const numeroQuiz = valeurs.length - 2;
+    const numeroUtilisateur = valeurs.length - 1;
+    const numeroRevision = valeurs.length;
+
+    const resultat = await this.executer(
+      `UPDATE quiz SET ${affectations.join(', ')}, revision = revision + 1
+       WHERE id_quiz = $${numeroQuiz} AND id_utilisateur = $${numeroUtilisateur}
+         AND revision = $${numeroRevision}
+       RETURNING *`,
+      valeurs,
+      client,
+    );
+
+    return this.#formater(resultat.rows[0]);
+  }
+
+  // Supprime un quiz seulement s'il appartient à l'enseignant connecté.
   async supprimer(idQuiz, idUtilisateur) {
-    const collection = await collectionQuiz();
-    const resultat = await collection.deleteOne({ _id: new ObjectId(idQuiz), id_utilisateur: idUtilisateur });
-    return resultat.deletedCount === 1;
-  }
+    const resultat = await this.executer(
+      'DELETE FROM quiz WHERE id_quiz = $1 AND id_utilisateur = $2',
+      [idQuiz, idUtilisateur],
+    );
 
-  // À la suppression d'un cours : effacer tous ses quiz.
-  async supprimerParCours(idCours, idUtilisateur) {
-    const collection = await collectionQuiz();
-    const resultat = await collection.deleteMany({ id_cours: idCours, id_utilisateur: idUtilisateur });
-    return resultat.deletedCount;
-  }
-
-  // RGPD — Droit à l'effacement : tous les quiz d'un compte supprimé.
-  async supprimerParUtilisateur(idUtilisateur) {
-    const collection = await collectionQuiz();
-    const resultat = await collection.deleteMany({ id_utilisateur: idUtilisateur });
-    return resultat.deletedCount;
+    return resultat.rowCount === 1;
   }
 }
 
