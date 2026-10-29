@@ -1,134 +1,123 @@
-// Régressions sur les verrous SQL, les révisions Mongo et la reprise après panne.
+// Régressions du stockage PostgreSQL avec questions JSONB et clés étrangères.
 jest.mock('../src/config/postgres', () => ({ query: jest.fn(), connect: jest.fn() }));
-jest.mock('../src/config/mongo', () => ({ collectionQuiz: jest.fn() }));
-// Contrôle de révocation des sessions simulé (testé dans session.test.js) :
-// fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
-jest.mock('../src/services/session.service', () => ({
-  sessionEstValide: async () => true,
-  revoquerSessions: jest.fn(),
-}));
 
+const fs = require('node:fs');
+const path = require('node:path');
 const pool = require('../src/config/postgres');
-const { collectionQuiz } = require('../src/config/mongo');
 const coursDepot = require('../src/depots/cours.depot');
 const quizDepot = require('../src/depots/quiz.depot');
-const nettoyageDepot = require('../src/depots/nettoyageQuiz.depot');
-const { reprendreNettoyage } = require('../src/services/nettoyageQuiz.service');
-const { ObjectId } = require('mongodb');
 
-beforeEach(() => {
-  jest.resetAllMocks();
-});
+beforeEach(() => jest.resetAllMocks());
 
-describe('verrou de persistance sur le cours', () => {
-  test('verrouille le cours du propriétaire avant l’écriture puis valide et libère la connexion', async () => {
-    const client = { query: jest.fn().mockResolvedValue({ rows: [{ id_cours: 3 }] }), release: jest.fn() };
-    pool.connect.mockResolvedValue(client);
-    const action = jest.fn(async () => 'quiz');
-
-    const resultat = await coursDepot.avecCoursVerrouille(3, 7, action);
-
-    expect(resultat).toBe('quiz');
-    expect(client.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FOR UPDATE'), [3, 7]);
-    expect(client.query.mock.calls[1][0]).toContain('id_utilisateur = $2');
-    expect(client.query).toHaveBeenLastCalledWith('COMMIT');
-    expect(action).toHaveBeenCalledWith(client);
-    expect(client.release).toHaveBeenCalledTimes(1);
+describe('intégrité entre cours, quiz et questions JSONB', () => {
+  test('le schéma lie le quiz au cours de son propriétaire et supprime par cascade', () => {
+    const schema = fs.readFileSync(path.join(__dirname, '../src/config/schema.sql'), 'utf8');
+    expect(schema).toContain('questions JSONB NOT NULL');
+    expect(schema).toContain('FOREIGN KEY (id_cours, id_utilisateur)');
+    expect(schema).toContain('REFERENCES cours(id_cours, id_utilisateur) ON DELETE CASCADE');
   });
 
-  test('un cours supprimé ou appartenant à autrui empêche l’écriture Mongo', async () => {
+  test('retire le nettoyage historique dans le bon ordre, sans supprimer une file non vide', () => {
+    const schema = fs.readFileSync(path.join(__dirname, '../src/config/schema.sql'), 'utf8');
+    const declencheur = schema.indexOf('DROP TRIGGER IF EXISTS suppression_cours_nettoyage');
+    const fonction = schema.indexOf('DROP FUNCTION IF EXISTS demander_nettoyage_quiz()');
+    const file = schema.indexOf('DROP TABLE IF EXISTS nettoyage_quiz');
+
+    expect(schema).toContain("to_regclass('public.nettoyage_quiz')");
+    expect(schema).toContain('RAISE EXCEPTION');
+    expect(declencheur).toBeGreaterThan(0);
+    expect(fonction).toBeGreaterThan(declencheur);
+    expect(file).toBeGreaterThan(fonction);
+  });
+
+  test('crée un quiz et ses questions avec SQL paramétré et JSONB', async () => {
+    pool.query.mockResolvedValue({ rows: [{ id_quiz: 'a'.repeat(24), revision: 1 }] });
+    const questions = [{ type: 'ouverte', enonce: 'Pourquoi ?', bonne_reponse: 'Pour apprendre.' }];
+    const quiz = await quizDepot.creer({
+      id_generation: 2, id_cours: 3, id_utilisateur: 7,
+      titre: 'SVT', statut: 'brouillon', questions,
+      parametres: { niveau: 'lycee' }, date_creation: new Date(),
+      date_modification: new Date(), date_validation: null,
+    });
+
+    expect(quiz.revision).toBe(1);
+    const [sql, valeurs] = pool.query.mock.calls[0];
+    expect(sql).toContain('INSERT INTO quiz');
+    expect(sql).toContain('::jsonb');
+    expect(valeurs[0]).toMatch(/^[a-f0-9]{24}$/);
+    expect(JSON.parse(valeurs[9])).toEqual(questions);
+  });
+
+  test('la lecture ne renvoie que le quiz du propriétaire', async () => {
+    pool.query.mockResolvedValue({ rows: [] });
+    expect(await quizDepot.trouverParId('a'.repeat(24), 9)).toBeNull();
+    expect(pool.query).toHaveBeenCalledWith(
+      expect.stringContaining('id_quiz = $1 AND id_utilisateur = $2'),
+      ['a'.repeat(24), 9],
+    );
+  });
+
+  test('une révision périmée ne modifie rien', async () => {
+    pool.query.mockResolvedValue({ rows: [] });
+    expect(await quizDepot.mettreAJour('a'.repeat(24), 7, { statut: 'valide' }, 3)).toBeNull();
+    const [sql, valeurs] = pool.query.mock.calls[0];
+    expect(sql).toContain('revision = revision + 1');
+    expect(sql).toContain('AND revision = $4');
+    expect(valeurs).toEqual(['valide', 'a'.repeat(24), 7, 3]);
+  });
+
+  test('le verrou SQL empêche la création sur un cours absent', async () => {
     const client = { query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() };
     pool.connect.mockResolvedValue(client);
     const action = jest.fn();
-
-    const resultat = await coursDepot.avecCoursVerrouille(3, 8, action);
-
-    expect(resultat).toBeNull();
+    expect(await coursDepot.avecCoursVerrouille(3, 7, action)).toBeNull();
+    expect(client.query.mock.calls[1][0]).toContain('FOR UPDATE');
     expect(action).not.toHaveBeenCalled();
     expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
-    expect(client.release).toHaveBeenCalledTimes(1);
-  });
-
-  test('une écriture échouée annule la transaction et libère le verrou', async () => {
-    const client = { query: jest.fn().mockResolvedValue({ rows: [{ id_cours: 3 }] }), release: jest.fn() };
-    pool.connect.mockResolvedValue(client);
-    const panne = new Error('panne simulée');
-
-    await expect(coursDepot.avecCoursVerrouille(3, 7, async () => {
-      throw panne;
-    })).rejects.toBe(panne);
-
-    expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
-    expect(client.release).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('révisions atomiques MongoDB', () => {
-  test('filtre propriétaire et version puis incrémente la révision en même temps que le contenu', async () => {
-    const identifiant = new ObjectId();
-    const collection = { findOneAndUpdate: jest.fn().mockResolvedValue({ _id: identifiant, revision: 4 }) };
-    collectionQuiz.mockResolvedValue(collection);
+describe('sécurité des modifications du quiz', () => {
+  test('refuse une colonne interdite avant toute requête SQL', async () => {
+    const modifications = { id_utilisateur: 99 };
 
-    const resultat = await quizDepot.mettreAJour(identifiant.toString(), 7, { statut: 'valide' }, 3);
+    await expect(
+      quizDepot.mettreAJour('a'.repeat(24), 7, modifications, 1),
+    ).rejects.toThrow(TypeError);
 
-    expect(resultat.revision).toBe(4);
-    expect(collection.findOneAndUpdate).toHaveBeenCalledWith(
-      { _id: identifiant, id_utilisateur: 7, revision: 3 },
-      { $set: { statut: 'valide' }, $inc: { revision: 1 } },
-      { returnDocument: 'after' },
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  test('refuse un objet de modifications vide sans accéder à la base', async () => {
+    await expect(quizDepot.mettreAJour('a'.repeat(24), 7, {}, 1)).rejects.toThrow(TypeError);
+
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  test('accepte des champs autorisés et encode les questions en JSONB', async () => {
+    const questions = [{ type: 'vrai_faux', enonce: 'Vrai ?', bonne_reponse: true }];
+    pool.query.mockResolvedValue({ rows: [{ revision: 2 }] });
+
+    await quizDepot.mettreAJour(
+      'a'.repeat(24),
+      7,
+      { titre: 'Titre corrigé', questions, date_validation: null },
+      1,
     );
-  });
 
-  test('un ancien document sans révision se lit en version zéro', async () => {
-    const identifiant = new ObjectId();
-    collectionQuiz.mockResolvedValue({ findOne: jest.fn().mockResolvedValue({ _id: identifiant }) });
-
-    const resultat = await quizDepot.trouverParId(identifiant.toString(), 7);
-
-    expect(resultat.revision).toBe(0);
-  });
-
-  test('la version zéro autorise uniquement zéro ou le champ absent', async () => {
-    const collection = { findOneAndUpdate: jest.fn().mockResolvedValue(null) };
-    collectionQuiz.mockResolvedValue(collection);
-
-    const resultat = await quizDepot.mettreAJour(new ObjectId().toString(), 7, { titre: 'Relu' }, 0);
-
-    expect(resultat).toBeNull();
-    expect(collection.findOneAndUpdate.mock.calls[0][0].$or).toEqual([
-      { revision: 0 },
-      { revision: { $exists: false } },
+    const [requete, parametres] = pool.query.mock.calls[0];
+    expect(requete).toContain('titre = $1');
+    expect(requete).toContain('questions = $2::jsonb');
+    expect(requete).toContain('date_validation = $3');
+    expect(requete).toContain('id_utilisateur = $5');
+    expect(requete).toContain('revision = $6');
+    expect(parametres).toEqual([
+      'Titre corrigé',
+      JSON.stringify(questions),
+      null,
+      'a'.repeat(24),
+      7,
+      1,
     ]);
-  });
-});
-
-describe('file durable de nettoyage', () => {
-  test('une panne Mongo conserve la demande ; le passage suivant la termine après effacement', async () => {
-    const journal = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const collection = { deleteMany: jest.fn().mockRejectedValueOnce(new Error('panne')) };
-    collection.deleteMany.mockResolvedValue({ deletedCount: 2 });
-    collectionQuiz.mockResolvedValue(collection);
-    pool.query.mockResolvedValue({ rows: [{ id_cours: 3, id_utilisateur: 7 }] });
-
-    await reprendreNettoyage();
-
-    expect(pool.query).toHaveBeenCalledTimes(1);
-    expect(collection.deleteMany).toHaveBeenCalledWith({ id_cours: 3, id_utilisateur: 7 });
-
-    await reprendreNettoyage();
-
-    expect(pool.query).toHaveBeenLastCalledWith(
-      'DELETE FROM nettoyage_quiz WHERE id_cours = $1 AND id_utilisateur = $2',
-      [3, 7],
-    );
-    journal.mockRestore();
-  });
-
-  test('le dépôt supprime la demande avec les deux identifiants paramétrés', async () => {
-    pool.query.mockResolvedValue({ rowCount: 1 });
-
-    await nettoyageDepot.terminer(3, 7);
-
-    expect(pool.query.mock.calls[0][1]).toEqual([3, 7]);
   });
 });

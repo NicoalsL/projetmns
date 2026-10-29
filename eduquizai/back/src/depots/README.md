@@ -1,56 +1,35 @@
-# `depots/` — le seul accès aux bases de données
+# Dépôts — accès aux données PostgreSQL
 
-Patron **Dépôt** (*Repository*) : seuls ces fichiers écrivent du SQL ou parlent à
-MongoDB. Changer de base ne toucherait que ce dossier.
+Les dépôts sont les seuls fichiers du backend qui écrivent des requêtes SQL.
+Ils utilisent pg, des requêtes paramétrées ($1, $2…) et le filtre id_utilisateur
+pour empêcher un enseignant d'accéder aux données d'un autre.
 
-| Fichier | Base | Contenu |
-|---|---|---|
-| `depotPostgres.js` | PostgreSQL | **classe mère abstraite** : requête paramétrée, lecture d'une ou plusieurs lignes, transaction |
-| `journalPostgres.js` | PostgreSQL | **classe intermédiaire abstraite** des deux journaux : purge RGPD à 6 mois |
-| `utilisateur.depot.js` | PostgreSQL | comptes, `version_jeton`, suppression (cascade) |
-| `cours.depot.js` | PostgreSQL | CRUD des cours, transaction avec verrou `FOR UPDATE` |
-| `generationIa.depot.js` | PostgreSQL | journal des appels à l'IA, purge après 6 mois |
-| `journalSecurite.depot.js` | PostgreSQL | journal de sécurité, purge après 6 mois |
-| `nettoyageQuiz.depot.js` | PostgreSQL | file des quiz à effacer dans MongoDB |
-| `quiz.depot.js` | MongoDB | quiz et questions, `revision` (verrou optimiste) |
+| Dépôt | Rôle |
+|---|---|
+| depotPostgres.js | Classe mère abstraite : requêtes, lecture, transactions |
+| journalPostgres.js | Classe intermédiaire abstraite : purge à 6 mois |
+| utilisateur.depot.js | Comptes, suppression et sessions |
+| cours.depot.js | CRUD des cours, contrôle du propriétaire, verrou FOR UPDATE |
+| generationIa.depot.js | Historique des appels IA et de leur livraison |
+| journalSecurite.depot.js | Traçabilité et purge sécurité |
+| quiz.depot.js | Quiz SQL et questions JSONB, revision (verrou optimiste) |
 
-## La POO dans ce dossier
+## Hiérarchie POO
 
-```
-DepotPostgres (abstraite) : executer(), trouverUne(), trouverToutes(), avecTransaction()
- ├── CoursDepot          (+ avecCoursVerrouille)
- ├── UtilisateurDepot
- ├── NettoyageQuizDepot
- └── JournalPostgres (abstraite) : purgerAnciens()
-      ├── GenerationIaDepot
-      └── JournalSecuriteDepot
-QuizDepot (MongoDB) : pas de classe mère, c'est le seul dépôt de sa famille
-```
+DepotPostgres est la classe mère de CoursDepot, UtilisateurDepot,
+QuizDepot et JournalPostgres. Cette dernière est la classe mère de
+GenerationIaDepot et JournalSecuriteDepot.
 
-Chaque fichier exporte **une seule instance** (`module.exports = new CoursDepot()`), partagée
-par toute l'application. Les dépôts renvoient les lignes de la base ; les services en font
-des objets métier (`new Cours(ligne)`, voir `modeles/`).
+## Intégrité
 
-## Choix de sécurité
+- **Clé étrangère composée** (id_cours, id_utilisateur) :
+  chaque quiz appartient à un cours du même enseignant.
+- **Cascade SQL** : supprimer un cours ou un compte supprime ses quiz
+  dans la même transaction. Il n'y a plus de nettoyage inter-bases.
+- **JSONB** : les QCM, vrai/faux et questions ouvertes restent ensemble,
+  dans une ligne quiz.
+- **Révision** : UPDATE ... WHERE revision = version_lue
+  et revision = revision + 1 ; aucune écriture si la version est périmée.
+- **SQL paramétré** : les textes et JSON ne sont jamais concaténés au SQL.
 
-- **Requêtes paramétrées** (`$1`, `$2`) : les valeurs ne sont jamais collées dans le
-  texte SQL → **pas d'injection SQL**.
-  ```js
-  pool.query('SELECT ... FROM cours WHERE id_cours = $1 AND id_utilisateur = $2', [idCours, idUtilisateur]);
-  ```
-- **Propriétaire dans la requête** : `AND id_utilisateur = $2` sur chaque lecture,
-  modification et suppression. Vérifier puis supprimer se fait **en une seule
-  requête** : aucun intervalle exploitable entre les deux.
-- **MongoDB** : valeurs typées (`new ObjectId(...)`, nombres) → **pas d'injection NoSQL** ;
-  chaque filtre contient `id_utilisateur`.
-- **Liste des cours sans le texte** (jusqu'à 50 000 caractères) : moins de données
-  transférées (éco-conception).
-- **RGPD** : purge des journaux après 6 mois (`purgerAnciens()`, héritée de `JournalPostgres`),
-  consentement enregistré avec sa date (preuve, article 7).
-
-## À retenir
-
-- `avecCoursVerrouille` : transaction `BEGIN … FOR UPDATE … COMMIT`. Pendant l'écriture
-  du quiz, une suppression du cours **attend**, donc pas de quiz orphelin.
-- `findOneAndUpdate` avec `revision` + `$inc` : comparer et modifier en une seule
-  opération (verrou optimiste).
+Voir le MPD réel : documentation/conception/base-de-donnees.md.

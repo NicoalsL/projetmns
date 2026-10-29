@@ -1,5 +1,7 @@
 # EduQuizAI
 
+**Architecture actuelle (29 octobre 2026) : PostgreSQL uniquement.** Les quiz et les questions sont enregistrés dans une table `quiz` avec une colonne `questions JSONB`. Les 6 quiz et 28 questions de l'ancienne base MongoDB ont été migrés sans perte. Voir `documentation/conception/base-de-donnees.md`.
+
 Application pédagogique du projet CDA. Les comptes et les cours sont utilisables : inscription, connexion, création, liste, consultation et suppression de ses propres cours. Les quiz sont générés à partir d'un cours (QCM, vrai/faux, questions ouvertes), relus, modifiés, validés par l'enseignant puis exportés en JSON. La génération utilise un modèle d'IA local (Ollama), OpenAI ou un mode simulation sans IA.
 
 ## Démarrer en local
@@ -24,19 +26,19 @@ Le service db-init attend PostgreSQL puis applique le schéma dans une transacti
 
 - Application : http://localhost:5173
 - Santé du processus API : http://localhost:3000/sante
-- Disponibilité PostgreSQL (avec schéma) et MongoDB : http://localhost:3000/pret
+- Disponibilité PostgreSQL (avec schéma) : http://localhost:3000/pret
 
-PostgreSQL et MongoDB restent sur le réseau Docker. Les ports front/API sont publiés uniquement sur 127.0.0.1. Les identifiants fixes de PostgreSQL et MongoDB sans authentification sont réservés au développement local.
+PostgreSQL est accessible uniquement sur le réseau Docker. Les ports front/API sont publiés uniquement sur 127.0.0.1. Les identifiants PostgreSQL fixes sont réservés au développement local.
 
 ## Utiliser l'application
 
 Créer un compte, puis choisir « Nouveau cours ». Le texte peut être saisi en Markdown (aperçu intégré) ou importé depuis un fichier .txt ou .md (lu dans le navigateur, 200 ko maximum). Un titre de 1 à 200 caractères et un texte de 1 à 50 000 caractères sont requis. Après l'enregistrement, le détail s'affiche. Le cours reste disponible après déconnexion/reconnexion. La suppression se fait depuis son détail et nécessite une confirmation.
 
-Un enseignant ne peut ni consulter ni supprimer un cours d'un autre compte. L'API répond 404 aussi bien pour un cours absent que non autorisé. Depuis le détail d'un cours, « Générer un quiz » crée un brouillon de 3 à 10 questions. L'enseignant le relit, le modifie si besoin, le valide, puis l'exporte en JSON. Toute modification repasse le quiz en brouillon. Voir docs/guide-utilisateur.md.
+Un enseignant ne peut ni consulter ni supprimer un cours d'un autre compte. L'API répond 404 aussi bien pour un cours absent que non autorisé. Depuis le détail d'un cours, « Générer un quiz » crée un brouillon de 3 à 10 questions. L'enseignant le relit, le modifie si besoin, le valide, puis l'exporte en JSON. Toute modification repasse le quiz en brouillon. Voir documentation/exploitation/guide-utilisateur.md.
 
 ## API des cours
 
-Toutes les routes requièrent Authorization: Bearer suivi d'un JWT valide.
+Toutes les routes requièrent une session valide. L'interface web utilise un cookie HttpOnly (JWT) ; les scripts API existants peuvent encore envoyer Authorization: Bearer. Les requêtes modifiant des données avec cookie exigent un jeton CSRF dans X-CSRF-Token.
 
 | Méthode | Route | Résultat |
 |---|---|---|
@@ -55,7 +57,7 @@ Le fournisseur est choisi par IA_FOURNISSEUR dans back/.env :
 | Valeur | Effet |
 |---|---|
 | simulation (défaut) | Questions fabriquées à partir des phrases du cours, sans IA ni coût. Les quiz sont marqués « simulation » dans l'interface et l'export. |
-| ollama | Modèle local servi par Ollama sur la machine hôte (OLLAMA_URL, défaut http://host.docker.internal:11434 ; OLLAMA_MODELE, défaut qwen3:8b). Gratuit, aucun texte envoyé à un tiers. Prérequis : Ollama démarré et `ollama pull qwen3:8b`. Mesuré : environ 20 à 35 s pour 3 à 4 questions, 58 s pour 6 (premier appel plus long : chargement du modèle). |
+| ollama | Modèle local servi par Ollama sur la machine hôte (OLLAMA_URL, défaut http://host.docker.internal:11434 ; OLLAMA_MODELE, défaut qwen3:4b ; OLLAMA_CONSERVATION, défaut 30m). Gratuit, aucun texte envoyé à un tiers. Prérequis : Ollama démarré et `ollama pull qwen3:4b`. Le modèle est préchargé au démarrage de l'API et gardé en mémoire 30 minutes. Mesuré (3 questions, modèle en mémoire) : qwen3:4b ≈ 5 s, qwen3:8b ≈ 7,8 s mais plus fidèle au cours (détail : documentation/qualite/plan-tests.md). |
 | openai | Appel à l'API OpenAI (chat/completions, sortie JSON imposée par schéma). Exige OPENAI_API_KEY ; modèle réglable par OPENAI_MODELE (gpt-4o-mini par défaut). |
 
 Après modification de .env : docker compose up -d back. La clé OpenAI reste côté serveur et n'est jamais envoyée au navigateur. Chaque appel est tracé dans la table generation_ia (statut, durée, nombre de questions). La réponse de l'IA est contrôlée par back/src/utilitaires/questions.js avant tout enregistrement ; une réponse non conforme est traitée comme un échec (502).
@@ -83,21 +85,21 @@ Toutes les routes requièrent un JWT. Un quiz d'un autre enseignant répond 404.
 | GET | /api/quiz/:idQuiz | 200, quiz complet |
 | PUT | /api/quiz/:idQuiz | 200, titre et questions remplacés ; retour en brouillon ; 400 avec le numéro de la question invalide |
 | POST | /api/quiz/:idQuiz/validation | 200, statut valide |
-| GET | /api/quiz/:idQuiz/export | 200, fichier JSON (ou CSV avec ?format=csv) ; 409 tant que le quiz n'est pas validé |
+| GET | /api/quiz/:idQuiz/export | 200, fichier JSON (ou CSV avec ?format=csv, PDF avec ?format=pdf) ; 409 tant que le quiz n'est pas validé |
 | POST | /api/quiz/:idQuiz/questions/:numero/regeneration | 200, la question n° numero (à partir de 0) est remplacée par une nouvelle du même type ; retour en brouillon ; compte dans les 10 générations par heure |
 | POST | /api/quiz/:idQuiz/questions/:numero/correction | 200, avis de l'IA { appreciation, commentaire } sur une réponse rédigée ; corps { reponse } ; questions ouvertes uniquement ; 30 par heure ; rien n'est enregistré |
 | DELETE | /api/quiz/:idQuiz | 204 |
 
-La suppression d'un cours supprime aussi ses quiz MongoDB. GET /api/cours/:id/generations renvoie les 20 dernières entrées du journal generation_ia du cours.
+La suppression d'un cours supprime aussi ses quiz SQL grâce à ON DELETE CASCADE. GET /api/cours/:id/generations renvoie les 20 dernières entrées du journal generation_ia du cours.
 
-Chaque question générée porte une citation du cours (`source`) qui justifie sa réponse. Le serveur vérifie qu'elle figure vraiment dans le cours (`source_trouvee`) ; si ce n'est pas le cas, l'interface demande à l'enseignant de vérifier la question en priorité. L'export CSV (séparateur « ; », encodage UTF-8 lisible par Excel) neutralise les cellules qui commenceraient par une formule (=, +, -, @). Le PDF s'obtient par « Imprimer ou enregistrer en PDF » : la feuille d'impression n'imprime que le quiz.
+Chaque question générée porte une citation du cours (`source`) qui justifie sa réponse. Le serveur vérifie qu'elle figure vraiment dans le cours (`source_trouvee`) ; si ce n'est pas le cas, l'interface demande à l'enseignant de vérifier la question en priorité. L'export CSV (séparateur « ; », encodage UTF-8 lisible par Excel) neutralise les cellules qui commenceraient par une formule (=, +, -, @). Le PDF est produit par l'API (pdfkit) : document balisé (langue, titre, structure) lisible par les lecteurs d'écran.
 
 L'enseignant peut aussi **tester son quiz** (/quiz/:id/essai) : une question à la fois, correction immédiate, score final ; pour une question ouverte, il s'évalue lui-même, avec l'avis facultatif de l'IA.
 
 ## Compte et RGPD
 
 - L'inscription exige consentementRgpd: true (case à cocher, jamais pré-cochée) ; la date du consentement est enregistrée.
-- DELETE /api/compte avec le corps { motDePasse } supprime le compte, ses cours, son journal (cascade SQL) et ses quiz (MongoDB) : 204 ; 403 si le mot de passe est faux ; 5 essais par quart d'heure.
+- DELETE /api/compte avec le corps { motDePasse } supprime le compte, ses cours, son journal et ses quiz (cascades SQL) : 204 ; 403 si le mot de passe est faux ; 5 essais par quart d'heure.
 - POST /api/compte/deconnexion révoque toutes les sessions du compte (tous les appareils) : 204. Le bouton « Se déconnecter » l'appelle avant de vider la session du navigateur.
 - Le journal generation_ia et le journal de sécurité (connexions réussies ou échouées, suppressions de compte, exports ; ni email ni adresse IP) sont purgés au démarrage puis chaque jour au-delà de 6 mois.
 - La page /confidentialite (lien en pied de page) détaille données, finalités, durées, destinataires et droits.
@@ -108,11 +110,11 @@ Depuis eduquizai, stack démarrée :
 
 ~~~sh
 docker compose exec -T back node scripts/jeu-essai.js   # données de démonstration, rejouable
-./scripts/sauvegarder.sh                                # PostgreSQL + MongoDB -> sauvegardes/AAAA-MM-JJ_HHMMSS/
+./scripts/sauvegarder.sh                                # PostgreSQL (quiz JSONB inclus) -> sauvegardes/AAAA-MM-JJ_HHMMSS/
 ./scripts/restaurer.sh sauvegardes/AAAA-MM-JJ_HHMMSS    # demande confirmation
 ~~~
 
-Compte de démonstration : claire.martin@demo.eduquizai.test / Demo-EduQuizAI-2026 (développement uniquement). Le jeu d'essai ne touche qu'aux comptes en @demo.eduquizai.test. Les sauvegardes contiennent des données personnelles : le dossier sauvegardes/ est exclu de Git. La restauration a été vérifiée en supprimant les cours et quiz de démonstration puis en restaurant la sauvegarde (3 cours et 1 quiz retrouvés).
+Compte de démonstration : claire.martin@demo.eduquizai.test / Demo-EduQuizAI-2026 (développement uniquement). Le jeu d'essai ne touche qu'aux comptes en @demo.eduquizai.test. Les sauvegardes PostgreSQL contiennent des données personnelles : le dossier sauvegardes/ est exclu de Git. La restauration a été vérifiée en supprimant les cours et quiz de démonstration puis en restaurant la sauvegarde (3 cours et 1 quiz retrouvés).
 
 ## Tests
 
@@ -120,7 +122,9 @@ Depuis back :
 
 ~~~sh
 npm ci
-npm test
+npm test                 # tests Jest
+npm run lint             # qualité du code (oxlint), aucun avertissement toléré
+npm run test:couverture  # tests + couverture (échec sous 80 % des lignes) ; rapport HTML dans coverage/
 ~~~
 
 Les tests Jest vérifient validation, configuration, authentification HTTP, requêtes SQL paramétrées, contrôle de propriété, module IA (API OpenAI simulée : jamais d'appel réel) et cycle de vie des quiz. Les bases sont simulées dans cette suite.
@@ -132,7 +136,7 @@ docker compose exec -T back npm run test:reel
 docker compose exec -T back npm run test:reel:quiz
 ~~~
 
-À lancer depuis eduquizai. Le script crée deux comptes synthétiques uniques, vérifie 19 résultats sur l'API et PostgreSQL, puis nettoie uniquement ses comptes et cours, même en cas d'échec. Il vérifie notamment une reconnexion, un texte de plus de 16 ko et le refus des accès entre comptes. Le second script vérifie 24 résultats sur le cycle complet d'un quiz (génération, journal SQL, document MongoDB, isolation, export refusé puis autorisé, modification, suppression en cascade).
+À lancer depuis eduquizai. Le script crée deux comptes synthétiques uniques, vérifie 19 résultats sur l'API et PostgreSQL, puis nettoie uniquement ses comptes et cours, même en cas d'échec. Il vérifie notamment une reconnexion, un texte de plus de 16 ko et le refus des accès entre comptes. Le second script vérifie 24 résultats sur le cycle complet d'un quiz (génération, journal SQL, ligne PostgreSQL avec questions JSONB, isolation, export refusé puis autorisé, modification, suppression en cascade).
 
 Depuis front (fonctions sans React avec le lanceur de Node, puis composants React avec Vitest et jsdom) :
 
@@ -143,7 +147,21 @@ npm run lint
 npm run build
 ~~~
 
-Les tests de session utilisent une horloge simulée pour contrôler le renouvellement depuis un autre onglet, son expiration et le nettoyage des minuteurs. La CI exécute les suites, initialise un PostgreSQL isolé, lance le parcours réel, vérifie le front et construit les images. Elle ne déploie rien.
+Les tests de session utilisent une horloge simulée pour contrôler le renouvellement depuis un autre onglet, son expiration et le nettoyage des minuteurs.
+
+Autres vérifications, depuis back, la stack étant démarrée :
+
+~~~sh
+npm run test:postman          # collection Postman exécutée par Newman (28 requêtes, 40 vérifications)
+npm run test:reel:openai      # appel RÉEL et payant à OpenAI (exige OPENAI_API_KEY)
+npm run mesure:performance    # durée de génération d'un quiz simple avec Ollama (10 essais)
+npm run test:charge           # test de charge : 20 utilisateurs simultanés pendant 20 s (0 erreur, p95 < 500 ms)
+~~~
+
+La suite Jest contient aussi des tests aléatoires (« fuzzing », `tests/fuzzing.test.js`) : 400 valeurs
+piégées par contrôle d'entrée, sans jamais faire planter le serveur.
+
+La CI exécute les suites, initialise un PostgreSQL isolé, lance les parcours réels et la collection Postman, scanne l'API avec OWASP ZAP, vérifie le front et construit les images. Sur la branche main, elle publie ensuite les images de production sur le registre GitHub (ghcr.io) : livraison continue, sans serveur cible pour l'instant.
 
 ## Exploitation de développement
 
@@ -163,24 +181,26 @@ Le Dockerfile backend installe uniquement les dépendances d'exécution ; Jest r
 
 Depuis back, installer les dépendances, exécuter npm run config:init, adapter DATABASE_URL vers une instance PostgreSQL accessible, puis npm run db:init et npm run dev. Le nom d'hôte postgres de l'exemple est interne à Docker. Les scripts locaux chargent .env ; les variables déjà définies restent prioritaires.
 
-Depuis front, npm run dev utilise http://localhost:3000 par défaut. VITE_API_URL et ORIGINE_FRONT doivent correspondre aux adresses utilisées si elles sont modifiées.
+Depuis front, npm run dev transmet les appels /api à http://localhost:3000 avec le proxy Vite (depuis Docker, vers http://back:3000). Le navigateur reste sur la même origine, afin de transmettre les cookies de session. VITE_API_URL doit normalement rester vide ; ORIGINE_FRONT doit correspondre à l'origine du navigateur.
 
 ## Limites et sécurité
 
 Les mots de passe doivent contenir au moins 8 caractères à l'inscription et ne pas dépasser 72 octets UTF-8. Les emails sont enregistrés en minuscules et recherchés sans tenir compte de la casse (les comptes créés avant restent accessibles). La connexion exécute toujours bcrypt, même pour un email inconnu : le temps de réponse ne révèle pas quels comptes existent. Le limiteur d'authentification est en mémoire : 20 requêtes par IP sur 15 minutes ; derrière nginx, TRUST_PROXY lui donne la vraie adresse du client. Plusieurs instances de l'API nécessiteraient des compteurs partagés (Redis par exemple).
 
-Les JWT restent en localStorage ; la vérification d'expiration dans le navigateur ne remplace jamais le contrôle serveur. Chaque requête protégée compare la version de session du jeton à celle du compte : un jeton est refusé après une déconnexion ou la suppression du compte, même s'il n'a pas expiré. Un changement de compte dans un autre onglet recharge les données affichées. Les cours supprimés emportent leurs générations SQL par cascade et leurs quiz MongoDB ; sans transaction commune aux deux bases, un échec MongoDB à cette étape est journalisé et les quiz restent rattachés à leur propriétaire.
+Les JWT sont transmis au navigateur dans un cookie HttpOnly, SameSite=Strict (et Secure en production HTTPS) ; ils ne sont plus conservés dans localStorage. Un second cookie technique non HttpOnly contient un jeton CSRF signé lié au JWT ; il doit être recopié dans l'en-tête X-CSRF-Token pour les écritures. Le backend valide aussi l'origine des requêtes. La vérification d'expiration côté interface ne remplace jamais le contrôle serveur. Chaque requête protégée compare la version de session du jeton à celle du compte : un jeton est refusé après une déconnexion ou la suppression du compte, même s'il n'a pas expiré. Un changement de compte dans un autre onglet recharge les données affichées. Deux minutes avant l'expiration (2 h), un avertissement propose de prolonger la session (POST /api/compte/session), sans recharger la page. Les cours supprimés emportent leurs générations SQL par cascade et leurs quiz SQL par la même cascade transactionnelle.
 
-Le texte d'un cours est transmis à l'IA comme une donnée délimitée, avec consigne d'ignorer les instructions qu'il contiendrait (injection de prompt) ; les balises de délimitation écrites dans le cours sont retirées. Cette précaution ne suffit pas seule : la réponse est validée strictement (une question non conforme est écartée), chaque citation du cours est vérifiée, et tout quiz doit être relu et validé par l'enseignant avant export. La génération réelle avec OpenAI n'a été vérifiée qu'avec une API simulée ; elle reste à tester avec une vraie clé, notamment le critère de moins de 5 secondes.
+Le texte d'un cours est transmis à l'IA comme une donnée délimitée, avec consigne d'ignorer les instructions qu'il contiendrait (injection de prompt) ; les balises de délimitation écrites dans le cours sont retirées. Cette précaution ne suffit pas seule : la réponse est validée strictement (une question non conforme est écartée), chaque citation du cours est vérifiée, et tout quiz doit être relu et validé par l'enseignant avant export. La génération réelle avec OpenAI n'a été vérifiée qu'avec une API simulée ; `npm run test:reel:openai` la vérifie avec une vraie clé. Une réponse inexploitable de l'IA (liste vide) est redemandée une seule fois. Ollama est joint en HTTP uniquement sur la machine locale ; vers une autre machine, HTTPS est exigé au démarrage (les cours ne circulent pas en clair).
 
-`docker-compose.yml` est une configuration de développement. La configuration proche de la production est `docker-compose.prod.yml` (build statique servi par nginx, CSP, secrets propres, MongoDB authentifié, aucune base exposée) ; le HTTPS se place devant, par un proxy comme Caddy (voir `docs/deploiement.md`).
+Moindre privilège sur les bases : l'API se connecte avec un compte restreint (`eduquizai_app`), qui peut seulement lire et écrire des lignes ; le compte propriétaire (`DATABASE_URL_ADMIN`) ne sert qu'à `npm run db:init`, qui crée les tables puis ce compte restreint. Au démarrage, l'API vérifie qu'elle n'utilise pas un compte d'administration (refus en production, avertissement en développement). Un ancien `.env` à un seul compte est mis à niveau par `npm run config:init`.
+
+`docker-compose.yml` est une configuration de développement. La configuration proche de la production est `docker-compose.prod.yml` (build statique servi par nginx, CSP, secrets propres, PostgreSQL uniquement, aucune base exposée) ; le HTTPS se place devant, par un proxy comme Caddy (voir `documentation/exploitation/deploiement.md`).
 
 Les documents confidentiels dans instructction/, les secrets, caches et dépendances locales sont exclus par .gitignore. Aucun document confidentiel ni secret ne doit être envoyé à un dépôt distant. Le premier commit historique contenait des pièces originales : la présente exclusion ne les efface pas de l'historique.
 
 ## Déploiement (configuration de production)
 
 `docker-compose.prod.yml` sert le front construit par nginx (seul port publié, en-têtes de
-sécurité dont une CSP stricte), l'API sans rechargement automatique et MongoDB protégé par
+sécurité dont une CSP stricte), l'API sans rechargement automatique et PostgreSQL protégé par
 mot de passe. Secrets dans `.env.production` (modèle : `.env.production.example`).
 
 ~~~sh
@@ -188,4 +208,4 @@ cp .env.production.example .env.production   # puis remplir les secrets (openssl
 ./scripts/deployer.sh                        # construit, démarre, attend les healthchecks, vérifie
 ~~~
 
-Procédure complète (HTTPS, mise à jour, sauvegarde, retour arrière) : `docs/deploiement.md`.
+Procédure complète (HTTPS, mise à jour, sauvegarde, retour arrière) : `documentation/exploitation/deploiement.md`.

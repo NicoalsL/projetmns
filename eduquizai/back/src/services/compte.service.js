@@ -1,7 +1,5 @@
 const Utilisateur = require('../modeles/utilisateur.modele');
 const utilisateurDepot = require('../depots/utilisateur.depot');
-const quizDepot = require('../depots/quiz.depot');
-const { reprendreNettoyage } = require('./nettoyageQuiz.service');
 const { ErreurIntrouvable, ErreurAccesRefuse } = require('../utilitaires/erreurs');
 const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 const { revoquerSessions } = require('./session.service');
@@ -9,7 +7,7 @@ const { signalerEvenementSecurite } = require('./alertesSecurite.service');
 
 // Rôle : gérer le compte de l'enseignant connecté (suppression RGPD, déconnexion).
 
-// Supprime le compte et TOUTES ses données, dans les deux bases (droit à l'effacement).
+// Supprime le compte et ses données par cascades PostgreSQL (droit à l'effacement).
 // SÉCURITÉ — Mot de passe redemandé : un jeton volé (ou un ordinateur resté
 // allumé) ne doit pas suffire pour tout effacer.
 async function supprimerCompte(idUtilisateur, motDePasse) {
@@ -26,20 +24,9 @@ async function supprimerCompte(idUtilisateur, motDePasse) {
     throw new ErreurAccesRefuse('Mot de passe incorrect');
   }
 
-  // 1. PostgreSQL : supprimer le compte supprime aussi ses cours (ON DELETE CASCADE),
-  //    et le déclencheur note les quiz à effacer, dans la même transaction.
-  // 2. MongoDB : on efface ensuite ces quiz (voir nettoyageQuiz.service.js).
+  // PostgreSQL garantit l'effacement atomique des cours, générations et quiz
+  // grâce aux clés étrangères ON DELETE CASCADE.
   await utilisateurDepot.supprimer(idUtilisateur);
-  await reprendreNettoyage();
-
-  // 3. Filet de sécurité : on efface aussi tout quiz restant de ce compte
-  //    (quiz « orphelin » d'un cours supprimé avant l'ajout du déclencheur).
-  //    Si MongoDB est en panne, ces quiz restent de toute façon inaccessibles.
-  try {
-    await quizDepot.supprimerParUtilisateur(idUtilisateur);
-  } catch (erreur) {
-    console.error('Effacement des quiz du compte différé', { code: erreur.code });
-  }
   await tracer(EVENEMENTS.COMPTE_SUPPRIME, idUtilisateur);
 }
 

@@ -20,7 +20,6 @@ function verifierEnvironnement(env = process.env) {
   }
 
   verifierUrlBase(env.DATABASE_URL);
-  verifierUrlMongo(env.MONGO_URL);
   verifierFournisseurIa(env);
 
   const port = Number(env.PORT || 3000);
@@ -40,12 +39,6 @@ function verifierEnvironnement(env = process.env) {
   // de faire croire à n'importe quelle adresse IP (et de contourner les limites).
   if (env.TRUST_PROXY !== undefined && !/^[1-5]$/.test(env.TRUST_PROXY)) {
     throw new Error('TRUST_PROXY doit être un entier entre 1 et 5 (nombre de proxys devant l\'API).');
-  }
-}
-
-function verifierUrlMongo(valeur) {
-  if (typeof valeur !== 'string' || !/^mongodb(\+srv)?:\/\/.+/.test(valeur)) {
-    throw new Error('MONGO_URL est requise et doit commencer par mongodb://');
   }
 }
 

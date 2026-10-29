@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 
-// Rôle : connexion à PostgreSQL (comptes, cours, journaux), partagée par tous les dépôts.
+// Rôle : connexion à PostgreSQL (comptes, cours, quiz JSONB, journaux), partagée par tous les dépôts.
 // CHOIX — PostgreSQL pour les données liées entre elles : clés étrangères,
 // transactions, cascades et contraintes (UNIQUE, CHECK) garanties par la base.
 // Un « pool » garde quelques connexions ouvertes et les réutilise : plus rapide

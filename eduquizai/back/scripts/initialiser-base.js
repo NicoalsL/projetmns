@@ -4,8 +4,8 @@ const { Pool } = require('pg');
 
 // Rôle : préparer la base PostgreSQL (npm run db:init, ou service « db-init »
 // de docker-compose) :
-// 1. appliquer schema.sql (que des CREATE ... IF NOT EXISTS : le relancer ne
-//    supprime aucune donnée) ;
+// 1. appliquer schema.sql (création idempotente et retrait sécurisé de
+//    l'ancien nettoyage inter-bases, sans supprimer les données métier) ;
 // 2. créer ou mettre à jour le compte de l'API, avec le minimum de droits.
 //
 // SÉCURITÉ — Moindre privilège : deux comptes PostgreSQL différents.

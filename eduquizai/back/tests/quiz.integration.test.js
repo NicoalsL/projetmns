@@ -1,5 +1,5 @@
 // Tests HTTP des quiz : vraies requêtes à travers Express, l'authentification,
-// la validation, le contrôleur et le service. Les dépôts (PostgreSQL, MongoDB)
+// la validation, le contrôleur et le service. Le dépôt PostgreSQL (quiz JSONB)
 // et le module IA sont simulés : on vérifie l'orchestration et les règles
 // métier (propriété, journal, cycle brouillon -> validé, export).
 
@@ -103,7 +103,7 @@ beforeEach(() => {
 });
 
 describe('régressions de cohérence et de concurrence', () => {
-  test('un quiz dont le cours a disparu reste inaccessible avant son nettoyage Mongo', async () => {
+  test('un quiz dont le cours a disparu reste inaccessible', async () => {
     coursDepot.trouverParId.mockResolvedValue(null);
 
     const reponse = await appeler('/api/quiz/' + ID_QUIZ);
@@ -138,10 +138,11 @@ describe('régressions de cohérence et de concurrence', () => {
       ID_ENSEIGNANT,
       expect.objectContaining({ statut: 'valide' }),
       0,
+      undefined,
     );
   });
 
-  test('une suppression pendant l’appel IA empêche toute insertion Mongo tardive', async () => {
+  test('une suppression pendant l’appel IA empêche toute insertion SQL tardive', async () => {
     coursDepot.avecCoursVerrouille.mockResolvedValue(null);
     genererQuiz.mockResolvedValue({ questions: questionsValides, fournisseur: 'simulation' });
 
@@ -155,7 +156,7 @@ describe('régressions de cohérence et de concurrence', () => {
     expect(generationIaDepot.marquerLivraison).toHaveBeenCalledWith(12, expect.any(Number), 'echec');
   });
 
-  test('une panne Mongo ne laisse pas une livraison annoncée comme enregistrée', async () => {
+  test('une erreur SQL ne laisse pas une livraison annoncée comme enregistrée', async () => {
     genererQuiz.mockResolvedValue({ questions: questionsValides, fournisseur: 'simulation' });
     quizDepot.creer.mockRejectedValue(new Error('panne'));
 
@@ -378,7 +379,7 @@ describe('historique des générations (GET /api/cours/:id/generations)', () => 
 
 describe('consultation, modification, validation, export et suppression', () => {
   test.each(['123', 'zzzzzzzzzzzzzzzzzzzzzzzz', '{"$ne":null}'])(
-    'refuse l\'identifiant de quiz invalide %s avant MongoDB',
+    'refuse l\'identifiant de quiz invalide %s avant toute requête SQL',
     async (identifiant) => {
       const reponse = await appeler('/api/quiz/' + encodeURIComponent(identifiant));
 

@@ -8,7 +8,6 @@ const gestionErreurs = require('../src/middlewares/gestionErreurs');
 const configurationValide = {
   JWT_SECRET: 'a'.repeat(64),
   DATABASE_URL: 'postgresql://user:password@localhost/base',
-  MONGO_URL: 'mongodb://localhost:27017/base',
 };
 
 // Faux objet "reponse" Express qui enregistre les appels.
@@ -55,8 +54,6 @@ describe('verifierEnvironnement', () => {
     ['port non numérique', { PORT: 'abc' }],
     ['port hors limites', { PORT: '65536' }],
     ['origine front avec chemin', { ORIGINE_FRONT: 'https://example.com/path' }],
-    ['URL MongoDB absente', { MONGO_URL: '' }],
-    ['URL MongoDB d\'un autre protocole', { MONGO_URL: 'https://example.com' }],
     ['fournisseur IA inconnu', { IA_FOURNISSEUR: 'autre' }],
     ['fournisseur OpenAI sans clé', { IA_FOURNISSEUR: 'openai', OPENAI_API_KEY: '' }],
     ['URL Ollama invalide', { IA_FOURNISSEUR: 'ollama', OLLAMA_URL: 'ollama:11434' }],

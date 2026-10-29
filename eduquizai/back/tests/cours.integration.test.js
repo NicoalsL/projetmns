@@ -4,9 +4,7 @@
 // sans prétendre tester la base elle-même (voir scripts/verifier-cours-reel.js).
 
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
-jest.mock('../src/services/nettoyageQuiz.service');
-// La suppression d'un cours supprime aussi ses quiz MongoDB : dépôt simulé.
-jest.mock('../src/depots/quiz.depot', () => ({ supprimerParCours: jest.fn().mockResolvedValue(0) }));
+// La suppression d'un cours supprime ses quiz SQL par cascade ; dépôt simulé.
 // Contrôle de révocation des sessions simulé (testé dans session.test.js) :
 // fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
 jest.mock('../src/services/session.service', () => ({

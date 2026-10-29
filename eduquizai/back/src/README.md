@@ -7,7 +7,7 @@ chaque couche a un seul métier :
 navigateur
    │  HTTP (JSON)
    ▼
-app.js ──► routes/ ──► middlewares/ ──► controleurs/ ──► services/ ──► depots/ ──► PostgreSQL / MongoDB
+app.js ──► routes/ ──► middlewares/ ──► controleurs/ ──► services/ ──► depots/ ──► PostgreSQL (quiz JSONB)
  (assemble)  (adresses)  (contrôles)     (HTTP <-> métier)  (règles)       (requêtes)
                                                                │
                                                                ├──► modeles/ (Cours, Quiz, Question, Utilisateur)
@@ -24,13 +24,13 @@ la réserve = la base de données).
 |---|---|
 | `serveur.js` | Démarre le processus : vérifie la configuration, la base, puis ouvre le port. |
 | `app.js` | Assemble l'application Express : sécurité globale, routes, gestion des erreurs. |
-| [`config/`](config/README.md) | Connexions aux bases, schéma SQL, vérification des réglages au démarrage. |
+| [`config/`](config/README.md) | Connexion PostgreSQL, schéma SQL, vérification des réglages au démarrage. |
 | [`routes/`](routes/README.md) | Liste des adresses de l'API et ordre des contrôles pour chacune. |
 | [`middlewares/`](middlewares/README.md) | Contrôles avant le contrôleur : jeton, validation des données, limites. |
 | [`controleurs/`](controleurs/README.md) | Traduit HTTP en appel de service, puis le résultat en réponse HTTP. |
 | [`services/`](services/README.md) | Orchestration : propriété, appels à l'IA et aux dépôts, erreurs métier. |
 | [`modeles/`](modeles/README.md) | Classes métier alignées sur le MCD : `Cours`, `Quiz`, `Question` (+ 3 types), `Utilisateur`. |
-| [`depots/`](depots/README.md) | Seuls fichiers qui écrivent du SQL ou parlent à MongoDB. |
+| [`depots/`](depots/README.md) | Seuls fichiers qui accèdent aux données PostgreSQL. |
 | [`ia/`](ia/README.md) | Consignes envoyées à l'IA, choix du fournisseur, contrôle de la réponse. |
 | [`utilitaires/`](utilitaires/README.md) | Outils partagés : règles d'une question, export CSV et PDF, erreurs. |
 
@@ -41,7 +41,7 @@ la réserve = la base de données).
 2. **Tout est validé à l'entrée** (middlewares) : type, longueur, format, listes fermées.
 3. **Propriété vérifiée dans la requête elle-même** (`WHERE ... AND id_utilisateur = $2`) :
    la ressource d'un autre renvoie **404**, comme si elle n'existait pas.
-4. **Requêtes paramétrées** partout : pas d'injection SQL ni NoSQL, et **moindre privilège** :
+4. **Requêtes paramétrées** partout : pas d'injection SQL, et **moindre privilège** :
    l'API utilise un compte de base qui ne peut ni supprimer ni créer de table.
 5. **L'IA n'est jamais crue sur parole** : réponse revalidée, citations vérifiées,
    relecture humaine obligatoire avant export.

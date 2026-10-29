@@ -5,7 +5,6 @@ const coursRoutes = require('./routes/cours.routes');
 const quizRoutes = require('./routes/quiz.routes');
 const compteRoutes = require('./routes/compte.routes');
 const { schemaEstPret } = require('./config/verificationSchema');
-const { mongoEstPret } = require('./config/mongo');
 const gestionErreurs = require('./middlewares/gestionErreurs');
 const creerLimiteur = require('./middlewares/limitationAuth');
 const { verifierOrigine, verifierCsrf } = require('./middlewares/sessionCookie');
@@ -55,11 +54,11 @@ app.get('/sante', (requete, reponse) => {
   reponse.json({ statut: 'ok' });
 });
 
-// /pret : PostgreSQL (avec ses tables) ET MongoDB répondent-ils ?
+// /pret : PostgreSQL et toutes ses tables répondent-ils ?
 // Docker s'en sert pour lancer le front seulement quand l'API est prête.
 app.get('/pret', async (requete, reponse) => {
   try {
-    const pret = (await schemaEstPret()) && (await mongoEstPret());
+    const pret = await schemaEstPret();
     reponse.status(pret ? 200 : 503).json({ statut: pret ? 'pret' : 'indisponible' });
   } catch {
     reponse.status(503).json({ statut: 'indisponible' });

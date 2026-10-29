@@ -1,42 +1,24 @@
-# `config/` — réglages et connexions aux bases
-
-Tout ce qui doit être prêt **avant** de traiter la première requête.
+# Configuration PostgreSQL et du serveur
 
 | Fichier | Rôle |
 |---|---|
-| `environnement.js` | Vérifie les variables d'environnement au démarrage ; refuse de démarrer si l'une est fausse. |
-| `postgres.js` | « Pool » de connexions PostgreSQL partagé par tous les dépôts (délais : 5 s connexion, 10 s requête). |
-| `mongo.js` | Connexion MongoDB et accès à la collection `quiz`. |
-| `schema.sql` | Création des 5 tables, contraintes, index et déclencheur de nettoyage. |
-| `verificationSchema.js` | Vérifie que les 5 tables existent, et que l'API utilise un compte **restreint**. |
+| environnement.js | Valide JWT_SECRET, DATABASE_URL et la configuration IA/CORS |
+| postgres.js | Pool partagé de connexions PostgreSQL (pg) |
+| schema.sql | Crée les 5 tables, clés étrangères, index et contraintes |
+| verificationSchema.js | Vérifie les 5 tables et le compte applicatif restreint |
 
-## Choix de sécurité
+## Choix actuels
 
-- **Échouer tôt** : une configuration dangereuse arrête le serveur au démarrage
-  avec un message clair, plutôt que de tourner en mode dégradé.
-- **Secret JWT robuste** : au moins 64 caractères hexadécimaux (généré par
-  `npm run config:init`). Un secret faible permettrait de fabriquer de faux jetons.
-- **Ollama** : HTTP accepté seulement en local (`localhost`, `host.docker.internal`…) ;
-  vers une autre machine, **HTTPS obligatoire**, sinon les cours circuleraient en clair.
-- **Clé OpenAI** exigée seulement si `IA_FOURNISSEUR=openai` ; elle vient du `.env`,
-  jamais commité.
-- **La base se protège elle-même** (`schema.sql`) :
-  - `UNIQUE` sur l'email : pas de doublon, même avec deux inscriptions simultanées ;
-  - `CHECK` : listes fermées de valeurs (statut, type d'événement, livraison) ;
-  - `ON DELETE CASCADE` : supprimer un compte supprime ses cours et son journal IA (RGPD) ;
-  - le journal de sécurité ne contient ni email ni adresse IP (minimisation RGPD).
+- **Une seule base PostgreSQL** pour les utilisateurs, cours, générations,
+  journaux et quiz avec leurs questions dans une colonne JSONB.
+- **Quiz et cours** liés par une clé étrangère composée sur
+  (id_cours, id_utilisateur), avec ON DELETE CASCADE.
+- **Transactions SQL** : l'enregistrement d'un quiz et l'état de livraison
+  d'une génération sont atomiques.
+- Le compte API eduquizai_app ne possède que des droits de lecture/écriture
+  des lignes ; le propriétaire n'intervient que pour npm run db:init.
+- Le journal de sécurité n'a volontairement pas de FK sur id_utilisateur.
+- Les mots de passe ne sont pas stockés en clair ; les secrets sont hors Git.
+- Ollama en HTTP seulement en local ; HTTPS obligatoire vers une machine distante.
 
-- **Moindre privilège** : l'API se connecte avec `eduquizai_app`, qui peut seulement lire et
-  écrire des lignes (ni `DROP`, ni `CREATE`, ni création de compte ; journal de sécurité non
-  modifiable). Le compte propriétaire ne sert qu'à `npm run db:init`
-  (`scripts/initialiser-base.js`). Au démarrage, l'API refuse en production un compte
-  d'administration (`compteApiEstRestreint()`).
-
-## À retenir
-
-- Pourquoi **deux bases** ? PostgreSQL pour les données structurées et liées
-  (comptes, cours, journaux : clés étrangères, transactions). MongoDB pour les quiz :
-  un quiz est un document avec une liste de questions de formes différentes.
-- Le **déclencheur** `suppression_cours_nettoyage` écrit une demande dans
-  `nettoyage_quiz` quand un cours est supprimé : les quiz MongoDB seront effacés
-  même si MongoDB est en panne à ce moment-là.
+Voir documentation/conception/base-de-donnees.md.

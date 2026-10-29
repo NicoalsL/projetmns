@@ -21,7 +21,7 @@ fi
 
 # Aucun secret ne doit rester vide : la stack refuserait de démarrer plus loin,
 # avec un message moins clair.
-for variable in POSTGRES_MOT_DE_PASSE MONGO_MOT_DE_PASSE POSTGRES_APP_MOT_DE_PASSE MONGO_APP_MOT_DE_PASSE JWT_SECRET; do
+for variable in POSTGRES_MOT_DE_PASSE POSTGRES_APP_MOT_DE_PASSE JWT_SECRET; do
   if ! grep -Eq "^${variable}=.+" "$FICHIER_SECRETS"; then
     echo "ERREUR : $variable est vide dans $FICHIER_SECRETS." >&2
     exit 1

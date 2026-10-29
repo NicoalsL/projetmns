@@ -1,5 +1,4 @@
 const coursDepot = require('../depots/cours.depot');
-const { reprendreNettoyage } = require('./nettoyageQuiz.service');
 const Cours = require('../modeles/cours.modele');
 const { ErreurIntrouvable, ErreurNonAuthentifie } = require('../utilitaires/erreurs');
 
@@ -54,18 +53,14 @@ async function modifier(idCours, idUtilisateur, donnees) {
   return new Cours(ligne);
 }
 
-// Supprime un cours, puis ses quiz rangés dans l'autre base (MongoDB).
+// Supprime le cours ; PostgreSQL supprime ses quiz et générations par cascade.
 async function supprimer(idCours, idUtilisateur) {
-  // 1. PostgreSQL : vérifier le propriétaire et supprimer en UNE requête.
-  //    Le journal generation_ia suit tout seul (ON DELETE CASCADE).
+  // Le propriétaire est vérifié dans le DELETE. Les clés étrangères
+  // suppriment les quiz et générations dans la même transaction PostgreSQL.
   const supprime = await coursDepot.supprimer(idCours, idUtilisateur);
   if (!supprime) {
     throw coursIntrouvable();
   }
-
-  // 2. MongoDB : effacer les quiz. Le déclencheur SQL a noté la demande, donc
-  //    rien n'est perdu même si MongoDB est en panne à cet instant.
-  await reprendreNettoyage();
 }
 
 module.exports = { creer, lister, consulter, modifier, supprimer };

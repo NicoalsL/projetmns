@@ -39,14 +39,14 @@ function conflitRevision() {
   return new ErreurConflit('Ce quiz a changé dans un autre onglet. Rechargez-le avant de continuer.');
 }
 
-// Enregistre le quiz produit par l'IA en « bloquant » le cours pendant l'écriture.
+// Enregistre le quiz et son état de livraison dans la même transaction SQL.
 // Pourquoi ? Si le cours est supprimé au même moment, la suppression attend :
-// pas de quiz « orphelin » sans cours.
+// pas de quiz orphelin ; la clé étrangère assure aussi l'intégrité.
 // Le blocage dure seulement l'écriture, jamais l'appel à l'IA (plusieurs secondes).
 async function enregistrerResultat(idCours, idUtilisateur, generation, action) {
   try {
     const resultat = await coursDepot.avecCoursVerrouille(idCours, idUtilisateur, async (client) => {
-      const quiz = await action();
+      const quiz = await action(client);
       await generationIaDepot.marquerLivraison(generation.id_generation, idUtilisateur, 'enregistre', client);
       return quiz;
     });
@@ -69,8 +69,8 @@ async function enregistrerResultat(idCours, idUtilisateur, generation, action) {
 // lue par l'enseignant. Sinon (modifié dans un autre onglet) -> 409, recharger.
 // CHOIX — « Optimiste » : on ne bloque rien à l'avance, on vérifie au moment
 // d'écrire. Simple, et les conflits sont rares (un seul enseignant par quiz).
-async function modifierVersion(idQuiz, idUtilisateur, modifications, revision) {
-  const resultat = await quizDepot.mettreAJour(idQuiz, idUtilisateur, modifications, revision);
+async function modifierVersion(idQuiz, idUtilisateur, modifications, revision, client) {
+  const resultat = await quizDepot.mettreAJour(idQuiz, idUtilisateur, modifications, revision, client);
   if (!resultat) {
     const existe = await quizDepot.trouverParId(idQuiz, idUtilisateur);
     throw existe ? conflitRevision() : quizIntrouvable();
@@ -148,7 +148,7 @@ async function generer(idCours, idUtilisateur, parametres) {
     'La génération du quiz a échoué. Réessayez dans quelques instants.',
   );
   const maintenant = new Date();
-  const quiz = await enregistrerResultat(idCours, idUtilisateur, generation, () => quizDepot.creer({
+  const quiz = await enregistrerResultat(idCours, idUtilisateur, generation, (client) => quizDepot.creer({
     id_generation: generation.id_generation,
     id_cours: idCours,
     id_utilisateur: idUtilisateur,
@@ -162,7 +162,7 @@ async function generer(idCours, idUtilisateur, parametres) {
     date_creation: maintenant,
     date_modification: maintenant,
     date_validation: null,
-  }));
+  }, client));
 
   return new Quiz({ ...quiz, duree_ms: dureeMs });
 }
@@ -187,8 +187,8 @@ async function consulter(idQuiz, idUtilisateur) {
     throw quizIntrouvable();
   }
   const quiz = new Quiz(document);
-  // SÉCURITÉ — Le cours doit exister encore : un quiz en attente d'effacement
-  // ne doit plus être lisible, même avec un ancien jeton.
+  // SÉCURITÉ — Défense supplémentaire : confirmer que le cours appartient
+  // toujours à l'enseignant, en plus de la contrainte de clé étrangère SQL.
   const cours = await coursDepot.trouverParId(quiz.id_cours, idUtilisateur);
   if (!cours) {
     throw quizIntrouvable();
@@ -206,7 +206,7 @@ async function modifier(idQuiz, idUtilisateur, { titre, questions }, revision) {
     const citation = normaliserPourCitation(question.source);
     return { ...question, source_trouvee: Boolean(citation && texteCours.includes(citation)) };
   });
-  const quiz = await coursDepot.avecCoursVerrouille(existant.id_cours, idUtilisateur, () => modifierVersion(
+  const quiz = await coursDepot.avecCoursVerrouille(existant.id_cours, idUtilisateur, (client) => modifierVersion(
     idQuiz,
     idUtilisateur,
     {
@@ -218,6 +218,7 @@ async function modifier(idQuiz, idUtilisateur, { titre, questions }, revision) {
       date_modification: new Date(),
     },
     revision,
+    client,
   ));
   if (!quiz) {
     throw quizIntrouvable();
@@ -229,11 +230,12 @@ async function modifier(idQuiz, idUtilisateur, { titre, questions }, revision) {
 // date_modification ne bouge pas : le contenu, lui, n'a pas changé.
 async function valider(idQuiz, idUtilisateur, revision) {
   const existant = await consulter(idQuiz, idUtilisateur);
-  const quiz = await coursDepot.avecCoursVerrouille(existant.id_cours, idUtilisateur, () => modifierVersion(
+  const quiz = await coursDepot.avecCoursVerrouille(existant.id_cours, idUtilisateur, (client) => modifierVersion(
     idQuiz,
     idUtilisateur,
     { statut: Quiz.STATUT_VALIDE, date_validation: new Date() },
     revision,
+    client,
   ));
   if (!quiz) {
     throw quizIntrouvable();
@@ -256,7 +258,7 @@ async function exporter(idQuiz, idUtilisateur) {
 // Le quiz repasse en brouillon : la nouvelle question doit être relue.
 async function regenererQuestion(idQuiz, idUtilisateur, numero, revision) {
   const quiz = await consulter(idQuiz, idUtilisateur);
-  if ((quiz.revision ?? 0) !== revision) {
+  if (quiz.revision !== revision) {
     throw conflitRevision();
   }
   const ancienneQuestion = quiz.question(numero);
@@ -282,7 +284,7 @@ async function regenererQuestion(idQuiz, idUtilisateur, numero, revision) {
 
   const questions = [...quiz.questions];
   questions[numero] = resultat.questions[0];
-  const quizAJour = await enregistrerResultat(quiz.id_cours, idUtilisateur, generation, () => modifierVersion(
+  const quizAJour = await enregistrerResultat(quiz.id_cours, idUtilisateur, generation, (client) => modifierVersion(
     idQuiz,
     idUtilisateur,
     {
@@ -292,6 +294,7 @@ async function regenererQuestion(idQuiz, idUtilisateur, numero, revision) {
       date_modification: new Date(),
     },
     revision,
+    client,
   ));
   if (!quizAJour) {
     throw quizIntrouvable();
