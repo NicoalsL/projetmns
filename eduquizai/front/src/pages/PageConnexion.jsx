@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import appelApi from '../api/client'
 import { sessionValide, definirSession, signalerAutresOnglets } from '../auth/session'
+import CaseConsentement from '../composants/CaseConsentement'
+import ChampMotDePasse from '../composants/ChampMotDePasse'
+import ChampSaisie from '../composants/ChampSaisie'
 import { placerFocus } from '../utilitaires/focus'
 import { useTitrePage } from '../utilitaires/titrePage'
 
@@ -25,12 +28,6 @@ function champsConcernes(message) {
   return correspondance ? correspondance[1] : []
 }
 
-// Liste d'identifiants pour aria-describedby (undefined si la liste est vide).
-function descriptions(...identifiants) {
-  const presents = identifiants.filter(Boolean)
-  return presents.length > 0 ? presents.join(' ') : undefined
-}
-
 function PageConnexion() {
   // L'onglet actif est porté par l'adresse : /connexion?onglet=inscription.
   // Les boutons « Créer un compte » de l'en-tête et de l'accueil ouvrent donc
@@ -40,8 +37,6 @@ function PageConnexion() {
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const [consentement, setConsentement] = useState(false)
-  // Afficher le mot de passe en clair évite les fautes de frappe, surtout sur mobile.
-  const [motDePasseVisible, setMotDePasseVisible] = useState(false)
   const [erreur, setErreur] = useState('')
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   // Un état React n'est mis à jour qu'au rendu suivant : un double-clic
@@ -53,9 +48,10 @@ function PageConnexion() {
   useTitrePage(estInscription ? 'Créer un compte' : 'Connexion')
   const champsEnErreur = erreur ? champsConcernes(erreur) : []
 
-  // Attributs d'un champ en erreur : aria-invalid + lien vers le message.
-  function etatErreur(champ) {
-    return champsEnErreur.includes(champ)
+  // Propriétés communes aux champs : sont-ils concernés par l'erreur affichée,
+  // et quel message les décrit (voir utilitaires/champsFormulaire.js).
+  function liaisonErreur(champ) {
+    return { enErreur: champsEnErreur.includes(champ), idErreur: ID_ERREUR }
   }
 
   function changerOnglet(nouvelOnglet) {
@@ -147,94 +143,51 @@ function PageConnexion() {
             <legend className="sr-only">{estInscription ? 'Créer un compte' : 'Se connecter'}</legend>
 
             {estInscription && (
-              <>
-                <label htmlFor="nom">Nom</label>
-                <input
-                  id="nom"
-                  name="nom"
-                  type="text"
-                  autoComplete="name"
-                  maxLength={100}
-                  required
-                  aria-invalid={etatErreur('nom') || undefined}
-                  aria-describedby={etatErreur('nom') ? ID_ERREUR : undefined}
-                  value={nom}
-                  onChange={(e) => setNom(e.target.value)}
-                />
-              </>
+              <ChampSaisie
+                id="nom"
+                libelle="Nom"
+                name="nom"
+                type="text"
+                autoComplete="name"
+                maxLength={100}
+                required
+                value={nom}
+                onChange={(e) => setNom(e.target.value)}
+                {...liaisonErreur('nom')}
+              />
             )}
 
-            <label htmlFor="email">Adresse email</label>
-            <input
+            <ChampSaisie
               id="email"
+              libelle="Adresse email"
               name="email"
               type="email"
               autoComplete="email"
               maxLength={255}
               required
-              aria-invalid={etatErreur('email') || undefined}
-              aria-describedby={etatErreur('email') ? ID_ERREUR : undefined}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              {...liaisonErreur('email')}
             />
 
-            <label htmlFor="mot-de-passe">Mot de passe</label>
-            <div className="champ-mot-de-passe">
-              <input
-                id="mot-de-passe"
-                name="motDePasse"
-                type={motDePasseVisible ? 'text' : 'password'}
-                autoComplete={estInscription ? 'new-password' : 'current-password'}
-                minLength={estInscription ? 8 : 1}
-                maxLength={OCTETS_MAX_MOT_DE_PASSE}
-                aria-describedby={descriptions(
-                  estInscription && 'aide-mot-de-passe',
-                  etatErreur('motDePasse') && ID_ERREUR,
-                )}
-                aria-invalid={etatErreur('motDePasse') || undefined}
-                required
-                value={motDePasse}
-                onChange={(e) => setMotDePasse(e.target.value)}
-              />
-              {/* aria-pressed : le lecteur d'écran annonce si le mot de passe est affiché */}
-              <button
-                type="button"
-                className="bouton-secondaire"
-                aria-pressed={motDePasseVisible}
-                aria-controls="mot-de-passe"
-                onClick={() => setMotDePasseVisible(!motDePasseVisible)}
-              >
-                {motDePasseVisible ? 'Masquer' : 'Afficher'}
-              </button>
-            </div>
-            {estInscription && (
-              <p id="aide-mot-de-passe" className="aide">
-                Au moins 8 caractères, au plus 72 octets UTF-8 (certains caractères en occupent plusieurs).
-              </p>
-            )}
+            <ChampMotDePasse
+              aide={estInscription
+                ? 'Au moins 8 caractères, au plus 72 octets UTF-8 (certains caractères en occupent plusieurs).'
+                : undefined}
+              autoComplete={estInscription ? 'new-password' : 'current-password'}
+              minLength={estInscription ? 8 : 1}
+              maxLength={OCTETS_MAX_MOT_DE_PASSE}
+              value={motDePasse}
+              onChange={(e) => setMotDePasse(e.target.value)}
+              {...liaisonErreur('motDePasse')}
+            />
 
-            {/* RGPD : consentement explicite, case jamais pré-cochée. Le lien
-                s'ouvre dans un nouvel onglet pour ne pas perdre la saisie. */}
             {estInscription && (
-              <div className="consentement">
-                <input
-                  id="consentement"
-                  type="checkbox"
-                  required
-                  aria-invalid={etatErreur('consentement') || undefined}
-                  aria-describedby={etatErreur('consentement') ? ID_ERREUR : undefined}
-                  checked={consentement}
-                  onChange={(e) => setConsentement(e.target.checked)}
-                />
-                <label htmlFor="consentement">
-                  J’accepte que mes données soient traitées conformément à la{' '}
-                  <Link to="/confidentialite" target="_blank" rel="noopener noreferrer">
-                    politique de confidentialité
-                    <span className="sr-only"> (s’ouvre dans un nouvel onglet)</span>
-                  </Link>
-                  .
-                </label>
-              </div>
+              <CaseConsentement
+                coche={consentement}
+                onChanger={setConsentement}
+                {...liaisonErreur('consentement')}
+              />
             )}
 
             <button type="submit" aria-busy={envoiEnCours}>
