@@ -103,7 +103,9 @@ async function executer() {
 
   // Ligne SQL : rattachée à l'enseignant A et à la génération tracée.
   const lignes = await pool.query(
-    'SELECT id_utilisateur, id_generation, jsonb_array_length(questions) AS nombre_questions FROM quiz WHERE id_cours = $1',
+    `SELECT id_utilisateur, id_generation,
+            jsonb_array_length(questions) AS nombre_questions
+     FROM quiz WHERE id_cours = $1`,
     [idCours],
   );
   verifier(lignes.rowCount, 1, 'un quiz dans la table SQL');

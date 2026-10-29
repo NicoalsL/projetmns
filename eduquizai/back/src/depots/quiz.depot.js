@@ -6,11 +6,6 @@ const DepotPostgres = require('./depotPostgres');
 // Les identifiants restent sur 24 caractères hexadécimaux pour conserver
 // les liens/API historiques lors de la migration depuis MongoDB.
 class QuizDepot extends DepotPostgres {
-  // La colonne revision est NOT NULL ; les anciens quiz migrés ont la valeur 0.
-  #formater(ligne) {
-    return ligne || null;
-  }
-
   // Nouveau quiz, révision 1 (+1 à chaque modification).
   // client optionnel : partage la transaction avec generation_ia et cours.
   async creer(quiz, client) {
@@ -45,7 +40,7 @@ class QuizDepot extends DepotPostgres {
       client,
     );
 
-    return this.#formater(resultat.rows[0]);
+    return resultat.rows[0] || null;
   }
 
   // Liste résumée : pas les questions, seulement leur nombre (moins de données).
@@ -58,17 +53,15 @@ class QuizDepot extends DepotPostgres {
       [idCours, idUtilisateur],
     );
 
-    return lignes.map((ligne) => this.#formater(ligne));
+    return lignes;
   }
 
   // Un quiz par son identifiant ET son propriétaire (null sinon).
   async trouverParId(idQuiz, idUtilisateur) {
-    const ligne = await this.trouverUne(
+    return this.trouverUne(
       'SELECT * FROM quiz WHERE id_quiz = $1 AND id_utilisateur = $2',
       [idQuiz, idUtilisateur],
     );
-
-    return this.#formater(ligne);
   }
 
   // Verrou optimiste : modifier seulement si la révision attendue est encore là.
@@ -116,7 +109,7 @@ class QuizDepot extends DepotPostgres {
       client,
     );
 
-    return this.#formater(resultat.rows[0]);
+    return resultat.rows[0] || null;
   }
 
   // Supprime un quiz seulement s'il appartient à l'enseignant connecté.

@@ -1,7 +1,7 @@
 -- Rôle : créer toutes les tables PostgreSQL d'EduQuizAI (quiz JSONB compris).
 -- Conception (MCD, MLD, MPD) : documentation/conception/base-de-donnees.md.
--- Script « idempotent » : il ne crée que ce qui n'existe pas encore (IF NOT EXISTS).
--- On peut donc le relancer à chaque démarrage sans jamais perdre de données.
+-- Script idempotent : il crée les tables manquantes et retire l'ancien mécanisme
+-- de nettoyage après vérification de sa file. Les données métier sont conservées.
 -- Les tables ROLE et PARTAGE du MCD cible n'existent pas encore : elles ne seront
 -- créées que si les fonctionnalités bonus (plusieurs rôles, partage) sont développées.
 
@@ -72,6 +72,25 @@ ALTER TABLE generation_ia ADD COLUMN IF NOT EXISTS livraison VARCHAR(20)
 -- SÉCURITÉ — Révocation des sessions : ce numéro est recopié dans chaque jeton.
 -- Se déconnecter l'augmente de 1, ce qui rend invalides tous les jetons déjà émis.
 ALTER TABLE utilisateur ADD COLUMN IF NOT EXISTS version_jeton INTEGER NOT NULL DEFAULT 0;
+
+-- MIGRATION — L'ancien nettoyage MongoDB devient inutile avec ON DELETE CASCADE.
+-- Si la file contient encore des demandes, interrompre l'initialisation pour
+-- ne pas perdre silencieusement des suppressions de quiz à traiter.
+DO $$
+BEGIN
+  IF to_regclass('public.nettoyage_quiz') IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM nettoyage_quiz) THEN
+      RAISE EXCEPTION
+        'Migration interrompue : vider la file nettoyage_quiz après vérification des données.';
+    END IF;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Le trigger doit disparaître avant sa fonction et la table qu'il utilisait.
+DROP TRIGGER IF EXISTS suppression_cours_nettoyage ON cours;
+DROP FUNCTION IF EXISTS demander_nettoyage_quiz();
+DROP TABLE IF EXISTS nettoyage_quiz;
 
 -- Quiz et questions : un quiz = une ligne SQL, avec ses questions intégrées
 -- dans JSONB (QCM, vrai/faux et ouverte). Même souplesse documentaire, mais

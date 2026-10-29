@@ -17,6 +17,19 @@ describe('intégrité entre cours, quiz et questions JSONB', () => {
     expect(schema).toContain('REFERENCES cours(id_cours, id_utilisateur) ON DELETE CASCADE');
   });
 
+  test('retire le nettoyage historique dans le bon ordre, sans supprimer une file non vide', () => {
+    const schema = fs.readFileSync(path.join(__dirname, '../src/config/schema.sql'), 'utf8');
+    const declencheur = schema.indexOf('DROP TRIGGER IF EXISTS suppression_cours_nettoyage');
+    const fonction = schema.indexOf('DROP FUNCTION IF EXISTS demander_nettoyage_quiz()');
+    const file = schema.indexOf('DROP TABLE IF EXISTS nettoyage_quiz');
+
+    expect(schema).toContain("to_regclass('public.nettoyage_quiz')");
+    expect(schema).toContain('RAISE EXCEPTION');
+    expect(declencheur).toBeGreaterThan(0);
+    expect(fonction).toBeGreaterThan(declencheur);
+    expect(file).toBeGreaterThan(fonction);
+  });
+
   test('crée un quiz et ses questions avec SQL paramétré et JSONB', async () => {
     pool.query.mockResolvedValue({ rows: [{ id_quiz: 'a'.repeat(24), revision: 1 }] });
     const questions = [{ type: 'ouverte', enonce: 'Pourquoi ?', bonne_reponse: 'Pour apprendre.' }];

@@ -6,7 +6,7 @@ const pool = require('../config/postgres');
 // Chaque classe fille (CoursDepot, UtilisateurDepot…) n'écrit que SES requêtes.
 //
 //   DepotPostgres (abstraite)
-//    ├── CoursDepot, UtilisateurDepot, NettoyageQuizDepot
+//    ├── CoursDepot, UtilisateurDepot, QuizDepot
 //    └── JournalPostgres (abstraite : purge RGPD)
 //         ├── GenerationIaDepot
 //         └── JournalSecuriteDepot

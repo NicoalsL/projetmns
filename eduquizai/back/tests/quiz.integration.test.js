@@ -1,5 +1,5 @@
 // Tests HTTP des quiz : vraies requêtes à travers Express, l'authentification,
-// la validation, le contrôleur et le service. Les dépôts (PostgreSQL, MongoDB)
+// la validation, le contrôleur et le service. Le dépôt PostgreSQL (quiz JSONB)
 // et le module IA sont simulés : on vérifie l'orchestration et les règles
 // métier (propriété, journal, cycle brouillon -> validé, export).
 
@@ -379,7 +379,7 @@ describe('historique des générations (GET /api/cours/:id/generations)', () => 
 
 describe('consultation, modification, validation, export et suppression', () => {
   test.each(['123', 'zzzzzzzzzzzzzzzzzzzzzzzz', '{"$ne":null}'])(
-    'refuse l\'identifiant de quiz invalide %s avant MongoDB',
+    'refuse l\'identifiant de quiz invalide %s avant toute requête SQL',
     async (identifiant) => {
       const reponse = await appeler('/api/quiz/' + encodeURIComponent(identifiant));
 
