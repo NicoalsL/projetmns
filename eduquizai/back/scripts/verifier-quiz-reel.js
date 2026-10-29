@@ -22,6 +22,8 @@ const URL_API = process.env.API_URL || 'http://127.0.0.1:3000';
 const prefixe = 'verification-quiz-' + randomUUID();
 const emailsDeTest = [prefixe + '-a@example.test', prefixe + '-b@example.test'];
 const motDePasse = 'Test-local-' + randomUUID();
+// Identifiants des comptes créés, pour vérifier à qui appartient le quiz en base.
+const idsDeTest = [];
 let nombreVerifications = 0;
 
 const TEXTE_COURS = [
@@ -60,6 +62,7 @@ async function inscrire(email, nom) {
     corps: { nom, email, motDePasse, consentementRgpd: true },
   });
   verifier(inscription.statut, 201, 'inscription ' + nom);
+  idsDeTest.push(inscription.donnees.utilisateur.id_utilisateur);
   return inscription.donnees.jeton;
 }
 
