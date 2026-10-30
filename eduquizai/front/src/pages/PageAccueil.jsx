@@ -51,7 +51,7 @@ function PageAccueil() {
             <Link to="/dashboard" className="bouton">Accéder à mes cours</Link>
           ) : (
             <>
-              <Link to="/connexion?onglet=inscription" className="bouton">Créer un compte</Link>
+              <Link to="/inscription" className="bouton">Créer un compte</Link>
               <Link to="/connexion" className="bouton bouton-secondaire">J’ai déjà un compte</Link>
             </>
           )}

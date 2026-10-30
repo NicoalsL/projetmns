@@ -56,7 +56,7 @@ function EnTete() {
         ) : (
           <ul>
             <li><Link to="/connexion" className="bouton bouton-secondaire">Se connecter</Link></li>
-            <li><Link to="/connexion?onglet=inscription" className="bouton">Créer un compte</Link></li>
+            <li><Link to="/inscription" className="bouton">Créer un compte</Link></li>
           </ul>
         )}
       </nav>

@@ -1,11 +1,12 @@
-// Tests de la page de connexion / inscription : onglets, affichage du mot de
-// passe, erreurs reliées aux champs (RGAA 11.10) et envoi à l'API simulée.
+// Tests de la page de connexion : onglets, affichage du mot de passe, erreurs
+// reliées aux champs (RGAA 11.10) et envoi à l'API simulée.
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import appelApi from '../../src/api/client'
 import PageConnexion from '../../src/pages/PageConnexion'
+import PageInscription from '../../src/pages/PageInscription'
 import { definirSession, sessionValide } from '../../src/auth/session'
 
 vi.mock('../../src/api/client', () => ({ default: vi.fn() }))
@@ -24,6 +25,7 @@ function afficherPage(adresse = '/connexion') {
     <MemoryRouter initialEntries={[adresse]}>
       <Routes>
         <Route path="/connexion" element={<PageConnexion />} />
+        <Route path="/inscription" element={<PageInscription />} />
         <Route path="/dashboard" element={<h1>Tableau de bord</h1>} />
       </Routes>
     </MemoryRouter>,
@@ -36,23 +38,29 @@ async function remplirConnexion(email, motDePasse) {
 }
 
 describe('PageConnexion', () => {
-  test('affiche la connexion par défaut, sans nom ni consentement', () => {
+  test('affiche l’email et le mot de passe, sans nom ni consentement', () => {
     afficherPage()
 
-    expect(screen.getByRole('button', { name: 'Connexion' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('link', { name: 'Connexion' }).getAttribute('aria-current')).toBe('page')
     expect(screen.queryByLabelText('Nom')).toBeNull()
     expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.getByLabelText('Mot de passe').getAttribute('aria-describedby')).toBeNull()
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeTruthy()
   })
 
-  test('l’onglet Inscription ajoute le nom, l’aide du mot de passe et le consentement', async () => {
+  test('l’onglet Inscription mène à la page d’inscription', async () => {
     afficherPage()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Inscription' }))
+    await userEvent.click(screen.getByRole('link', { name: 'Inscription' }))
+
+    expect(screen.getByRole('link', { name: 'Inscription' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByLabelText('Nom')).toBeTruthy()
+  })
+
+  test('une ancienne adresse ?onglet=inscription redirige vers l’inscription', () => {
+    afficherPage('/connexion?onglet=inscription')
 
     expect(screen.getByLabelText('Nom')).toBeTruthy()
-    expect(screen.getByRole('checkbox').checked).toBe(false)
-    expect(screen.getByLabelText('Mot de passe').getAttribute('aria-describedby')).toBe('aide-mot-de-passe')
     expect(screen.getByRole('button', { name: 'Créer mon compte' })).toBeTruthy()
   })
 
@@ -85,26 +93,6 @@ describe('PageConnexion', () => {
     expect(await screen.findByRole('heading', { name: 'Tableau de bord' })).toBeTruthy()
   })
 
-  test('inscription : envoie le nom, l’email, le mot de passe et le consentement', async () => {
-    appelApi.mockResolvedValue({ id_utilisateur: 8, expiration: Date.now() + UNE_HEURE_MS })
-    afficherPage('/connexion?onglet=inscription')
-
-    await userEvent.type(screen.getByLabelText('Nom'), ' Camille ')
-    await remplirConnexion('camille@exemple.fr', 'MotDePasse-123')
-    await userEvent.click(screen.getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Créer mon compte' }))
-
-    expect(appelApi).toHaveBeenCalledWith('/api/auth/inscription', {
-      method: 'POST',
-      body: JSON.stringify({
-        nom: 'Camille',
-        email: 'camille@exemple.fr',
-        motDePasse: 'MotDePasse-123',
-        consentementRgpd: true,
-      }),
-    })
-  })
-
   test('mot de passe incorrect : email et mot de passe marqués en erreur et reliés au message', async () => {
     appelApi.mockRejectedValue(new Error('Email ou mot de passe incorrect'))
     afficherPage()
@@ -123,21 +111,6 @@ describe('PageConnexion', () => {
     expect(sessionValide()).toBe(false)
   })
 
-  test('erreur sur le nom à l’inscription : seul le champ Nom est marqué', async () => {
-    appelApi.mockRejectedValue(new Error('Le nom est obligatoire'))
-    afficherPage('/connexion?onglet=inscription')
-
-    await userEvent.type(screen.getByLabelText('Nom'), 'A')
-    await remplirConnexion('a@exemple.fr', 'MotDePasse-123')
-    await userEvent.click(screen.getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Créer mon compte' }))
-
-    await screen.findByRole('alert')
-    expect(screen.getByLabelText('Nom').getAttribute('aria-invalid')).toBe('true')
-    expect(screen.getByLabelText('Adresse email').getAttribute('aria-invalid')).toBeNull()
-    expect(screen.getByLabelText('Mot de passe').getAttribute('aria-describedby')).toBe('aide-mot-de-passe')
-  })
-
   test('refuse un mot de passe de plus de 72 octets sans appeler l’API', async () => {
     afficherPage()
 
@@ -148,6 +121,18 @@ describe('PageConnexion', () => {
     expect(screen.getByRole('alert').textContent).toContain('72 octets')
     expect(screen.getByLabelText('Mot de passe').getAttribute('aria-invalid')).toBe('true')
     expect(appelApi).not.toHaveBeenCalled()
+  })
+
+  test('un double-clic n’envoie la demande qu’une seule fois', async () => {
+    // Réponse jamais reçue : l'envoi reste en cours pendant le second clic.
+    appelApi.mockReturnValue(new Promise(() => {}))
+    afficherPage()
+    await remplirConnexion('prof@exemple.fr', 'MotDePasse-123')
+    const bouton = screen.getByRole('button', { name: 'Se connecter' })
+
+    await userEvent.dblClick(bouton)
+
+    expect(appelApi).toHaveBeenCalledTimes(1)
   })
 
   test('déjà connecté : redirigé vers le tableau de bord', () => {
