@@ -117,6 +117,32 @@ test('inscription : des données invalides sont refusées avant d\'atteindre la 
   expect(depot.trouverParEmail).not.toHaveBeenCalled();
 });
 
+// SÉCURITÉ — OWASP ASVS V2.1.1 : 12 caractères minimum à l'inscription.
+test('inscription : mot de passe de 11 caractères refusé, 12 caractères accepté', async () => {
+  depot.trouverParEmail.mockResolvedValue(null);
+  depot.creer.mockResolvedValue({ id_utilisateur: 8, nom: 'Alice', email: utilisateurTest.email, role: 'enseignant' });
+
+  const tropCourt = await envoyerJson('/api/auth/inscription', { ...utilisateurTest, motDePasse: 'a'.repeat(11) });
+  const minimum = await envoyerJson('/api/auth/inscription', { ...utilisateurTest, motDePasse: 'a'.repeat(12) });
+
+  expect(tropCourt.status).toBe(400);
+  expect((await tropCourt.json()).erreur).toContain('au moins 12 caractères');
+  expect(minimum.status).toBe(201);
+  expect(depot.creer).toHaveBeenCalledTimes(1);
+});
+
+test('connexion : un ancien compte au mot de passe de 8 caractères peut toujours se connecter', async () => {
+  const ancienMotDePasse = 'Ancien-8';
+  const hache = await bcrypt.hash(ancienMotDePasse, 4);
+  depot.trouverParEmail.mockResolvedValue({
+    id_utilisateur: 9, nom: 'Alice', email: utilisateurTest.email, role: 'enseignant', mot_de_passe_hache: hache,
+  });
+
+  const reponse = await envoyerJson('/api/auth/connexion', { email: utilisateurTest.email, motDePasse: ancienMotDePasse });
+
+  expect(reponse.status).toBe(200);
+});
+
 // Le message est identique pour un email inconnu et un mot de passe faux.
 test('connexion : réussit avec le bon mot de passe, même refus pour tout identifiant faux', async () => {
   const hache = await bcrypt.hash(utilisateurTest.motDePasse, 4);

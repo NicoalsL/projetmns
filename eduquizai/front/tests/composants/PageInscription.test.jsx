@@ -47,6 +47,9 @@ describe('PageInscription', () => {
     expect(screen.getByLabelText('Nom')).toBeTruthy()
     expect(screen.getByRole('checkbox').checked).toBe(false)
     expect(screen.getByLabelText('Mot de passe').getAttribute('aria-describedby')).toBe('aide-mot-de-passe')
+    // Même minimum que le back (OWASP ASVS) : le navigateur bloque avant l'envoi.
+    expect(screen.getByLabelText('Mot de passe').getAttribute('minlength')).toBe('12')
+    expect(screen.getByText(/Au moins 12 caractères/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Créer mon compte' })).toBeTruthy()
   })
 
@@ -94,7 +97,7 @@ describe('PageInscription', () => {
   })
 
   test('erreur sur le mot de passe : l’aide et le message sont tous deux reliés au champ', async () => {
-    appelApi.mockRejectedValue(new Error('Le mot de passe doit contenir au moins 8 caractères'))
+    appelApi.mockRejectedValue(new Error('Le mot de passe doit contenir au moins 12 caractères'))
     afficherPage()
 
     await remplirFormulaire('Camille')

@@ -8,7 +8,7 @@ import { useTitrePage } from '../utilitaires/titrePage'
 
 // Mêmes limites que la table utilisateur (schema.sql) et que le back.
 const LONGUEUR_MAX_NOM = 100
-const LONGUEUR_MIN_MOT_DE_PASSE = 8
+const LONGUEUR_MIN_MOT_DE_PASSE = 12 // recommandation OWASP ASVS (V2.1.1)
 
 // Page d'inscription : nom, email, mot de passe et consentement RGPD. Le cadre
 // (onglets, bouton, erreur) et l'envoi sont partagés avec PageConnexion.
@@ -63,7 +63,7 @@ function PageInscription() {
       />
 
       <ChampMotDePasse
-        aide="Au moins 8 caractères, au plus 72 octets UTF-8 (certains caractères en occupent plusieurs)."
+        aide="Au moins 12 caractères, au plus 72 octets UTF-8 (certains caractères en occupent plusieurs)."
         autoComplete="new-password"
         minLength={LONGUEUR_MIN_MOT_DE_PASSE}
         maxLength={OCTETS_MAX_MOT_DE_PASSE}
