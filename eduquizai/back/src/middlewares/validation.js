@@ -2,7 +2,9 @@ const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // forme simple : texte@texte.
 const LONGUEUR_MAX_NOM = 100; // = VARCHAR(100) dans schema.sql
 const LONGUEUR_MAX_EMAIL = 255; // = VARCHAR(255) dans schema.sql
 const OCTETS_MAX_MOT_DE_PASSE = 72; // limite de bcrypt
-const LONGUEUR_MIN_MOT_DE_PASSE = 8;
+// SÉCURITÉ — 12 caractères minimum à l'inscription, comme le recommande
+// l'OWASP ASVS (V2.1.1). Les comptes plus anciens se connectent toujours.
+const LONGUEUR_MIN_MOT_DE_PASSE = 12;
 
 const { estObjetJson } = require('../utilitaires/entrees');
 
@@ -39,7 +41,7 @@ function motDePasseValide(motDePasse, longueurMinimum) {
     && Buffer.byteLength(motDePasse, 'utf8') <= OCTETS_MAX_MOT_DE_PASSE;
 }
 
-// Inscription : nom, email, mot de passe (8 caractères minimum) et consentement.
+// Inscription : nom, email, mot de passe (12 caractères minimum) et consentement.
 function validerInscription(requete, reponse, suite) {
   if (!estObjetJson(requete.body)) {
     return reponse.status(400).json({ erreur: 'Corps de requête invalide' });
@@ -58,7 +60,8 @@ function validerInscription(requete, reponse, suite) {
   }
   if (!motDePasseValide(motDePasse, LONGUEUR_MIN_MOT_DE_PASSE)) {
     return reponse.status(400).json({
-      erreur: 'Le mot de passe doit contenir au moins 8 caractères et au plus 72 octets UTF-8',
+      erreur: `Le mot de passe doit contenir au moins ${LONGUEUR_MIN_MOT_DE_PASSE} caractères `
+        + 'et au plus 72 octets UTF-8',
     });
   }
   // RGPD — Consentement obligatoire : exactement true (case cochée),
