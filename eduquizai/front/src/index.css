@@ -1024,7 +1024,7 @@ button[aria-busy="true"]::before {
   margin-top: var(--espace-5);
 }
 
-/* Onglets (Connexion / Créer un compte) en commutateur segmenté.
+/* Onglets (liens Connexion / Inscription) en commutateur segmenté.
    Onglet actif : pastille blanche en relief + texte violet (forme ET couleur). */
 .onglets {
   display: flex;
@@ -1036,7 +1036,7 @@ button[aria-busy="true"]::before {
   border-radius: var(--rayon);
 }
 
-.onglets button {
+.onglets a {
   flex: 1 1 0;
   min-height: 2.75rem;
   padding: var(--espace-2) var(--espace-3);
@@ -1048,13 +1048,13 @@ button[aria-busy="true"]::before {
   box-shadow: none;
 }
 
-.onglets button:hover {
+.onglets a:hover {
   color: var(--texte);
   background-color: var(--surface);
   border-color: var(--surface);
 }
 
-.onglets button:active {
+.onglets a:active {
   transform: none;
 }
 
@@ -2000,7 +2000,7 @@ td .bouton {
 }
 
 /* L'onglet actif garde son style au survol (la charte ne le prévoit que pour
-   aria-selected ; nos onglets utilisent aria-pressed + la classe .actif) */
+   aria-selected ; nos onglets utilisent aria-current + la classe .actif) */
 .onglets .actif:hover {
   color: var(--principale-texte);
   background-color: var(--surface);

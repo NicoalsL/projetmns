@@ -18,7 +18,7 @@ function PagePlanDuSite() {
         <ul>
           <li><Link to="/">Accueil : présentation d’EduQuizAI</Link></li>
           <li><Link to="/connexion">Se connecter</Link></li>
-          <li><Link to="/connexion?onglet=inscription">Créer un compte</Link></li>
+          <li><Link to="/inscription">Créer un compte</Link></li>
           <li>
             Espace enseignant (après connexion)
             <ul>

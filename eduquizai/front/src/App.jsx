@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import PageAccueil from './pages/PageAccueil'
 import PageConnexion from './pages/PageConnexion'
+import PageInscription from './pages/PageInscription'
 import PageDashboard from './pages/PageDashboard'
 import PageCreationCours from './pages/PageCreationCours'
 import PageDetailCours from './pages/PageDetailCours'
@@ -83,6 +84,7 @@ function App() {
         <Routes>
           <Route path="/" element={<PageAccueil />} />
           <Route path="/connexion" element={<PageConnexion />} />
+          <Route path="/inscription" element={<PageInscription />} />
           <Route path="/confidentialite" element={<PageConfidentialite />} />
           <Route path="/plan-du-site" element={<PagePlanDuSite />} />
           <Route path="/dashboard" element={<RouteProtegee enfant={<PageDashboard />} />} />
