@@ -1,8 +1,4 @@
-const LIBELLES_TYPE = { qcm: 'QCM', vrai_faux: 'Vrai ou faux', ouverte: 'Question ouverte' }
-
-// Classe de couleur de l'étiquette (charte graphique) : le libellé reste
-// toujours affiché, la couleur n'est qu'un repère supplémentaire.
-const CLASSES_TYPE = { qcm: 'type-qcm', vrai_faux: 'type-vrai-faux', ouverte: 'type-ouverte' }
+import EtiquetteTypeQuestion from './EtiquetteTypeQuestion'
 
 // Un vrai/faux est présenté comme un QCM à deux réponses (A : Vrai, B : Faux).
 const CHOIX_VRAI_FAUX = ['Vrai', 'Faux']
@@ -29,7 +25,7 @@ function ListeChoix({ choix, indexBonneReponse }) {
 function QuestionLecture({ question, numero, children }) {
   return (
     <article className="question">
-      <span className={'type-question ' + CLASSES_TYPE[question.type]}>{LIBELLES_TYPE[question.type]}</span>
+      <EtiquetteTypeQuestion type={question.type} />
       <h3>{numero}. {question.enonce}</h3>
 
       {question.type === 'qcm' && (

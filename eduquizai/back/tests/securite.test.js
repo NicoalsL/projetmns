@@ -2,7 +2,7 @@
 // limitation des tentatives (force brute) et masquage des erreurs internes.
 
 const verifierEnvironnement = require('../src/config/environnement');
-const creerLimiteur = require('../src/middlewares/limitationAuth');
+const creerLimiteur = require('../src/middlewares/limiteurRequetes');
 const gestionErreurs = require('../src/middlewares/gestionErreurs');
 
 const configurationValide = {
@@ -66,7 +66,7 @@ describe('verifierEnvironnement', () => {
   });
 });
 
-describe('limitationAuth', () => {
+describe('limiteurRequetes', () => {
   test('bloque une IP au-delà du maximum, renvoie Retry-After, puis la débloque après la fenêtre', () => {
     let instant = 0;
     const limiter = creerLimiteur({ maximum: 2, fenetreMs: 1000, maintenant: () => instant });

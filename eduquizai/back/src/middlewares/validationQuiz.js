@@ -1,4 +1,5 @@
-const { normaliserQuestions, TYPES_QUESTION, NOMBRE_MAX_QUESTIONS } = require('../utilitaires/questions');
+const Quiz = require('../modeles/quiz.modele');
+const { TYPES_QUESTION } = require('../modeles/question.modele');
 const { estObjetJson } = require('../utilitaires/entrees');
 const { ErreurQuestion } = require('../utilitaires/erreurs');
 
@@ -99,7 +100,7 @@ function validerFormatExport(requete, reponse, suite) {
 function validerNumeroQuestion(requete, reponse, suite) {
   const valeur = requete.params.numero;
   const formatValide = typeof valeur === 'string' && /^[0-9]{1,2}$/.test(valeur);
-  if (!formatValide || Number(valeur) >= NOMBRE_MAX_QUESTIONS) {
+  if (!formatValide || Number(valeur) >= Quiz.NOMBRE_MAX_QUESTIONS) {
     return reponse.status(400).json({ erreur: 'Numéro de question invalide' });
   }
   requete.numeroQuestion = Number(valeur);
@@ -121,7 +122,7 @@ function validerReponseDonnee(requete, reponse, suite) {
 }
 
 // Modification d'un quiz : un titre et des questions valides.
-// Les règles d'une question sont dans utilitaires/questions.js.
+// Les règles des questions sont dans modeles/quiz.modele.js et question.modele.js.
 function validerModificationQuiz(requete, reponse, suite) {
   if (!estObjetJson(requete.body)) {
     return reponse.status(400).json({ erreur: 'Un titre et des questions sont requis' });
@@ -134,7 +135,7 @@ function validerModificationQuiz(requete, reponse, suite) {
 
   let questionsNettoyees;
   try {
-    questionsNettoyees = normaliserQuestions(questions);
+    questionsNettoyees = Quiz.normaliserQuestions(questions);
   } catch (erreur) {
     // On renvoie le numéro et le champ fautifs : l'interface peut
     // entourer en rouge exactement le champ à corriger.

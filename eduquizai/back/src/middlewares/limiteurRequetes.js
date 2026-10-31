@@ -3,7 +3,7 @@ const MESSAGE_PAR_DEFAUT = 'Trop de tentatives. Réessayez plus tard.';
 
 // Rôle : limiter le nombre d'essais. Au-delà de X essais dans une période,
 // réponse 429 (« trop de requêtes ») avec le délai avant de réessayer.
-// Deux usages :
+// Les limiteurs réellement utilisés, avec leurs quotas, sont tous dans limiteurs.js :
 // - contre la force brute sur la connexion : compteur par adresse IP ;
 // - contre l'abus de l'IA (coûteuse) : compteur par enseignant.
 //
@@ -42,9 +42,13 @@ class LimiteurDeRequetes {
   // Supprime les compteurs périmés (au plus une fois par minute)
   // pour que la mémoire ne grossisse pas sans fin.
   #nettoyer(instant) {
-    if (instant < this.#prochainNettoyage) return;
+    if (instant < this.#prochainNettoyage) {
+      return;
+    }
     for (const [adresse, compteur] of this.#tentatives) {
-      if (compteur.expiration <= instant) this.#tentatives.delete(adresse);
+      if (compteur.expiration <= instant) {
+        this.#tentatives.delete(adresse);
+      }
     }
     this.#prochainNettoyage = instant + Math.min(this.#reglages.fenetreMs, 60000);
   }

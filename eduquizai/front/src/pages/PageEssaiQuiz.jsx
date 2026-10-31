@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import appelApi from '../api/client'
+import EtiquetteTypeQuestion from '../composants/EtiquetteTypeQuestion'
 import { calculerScore, estBonneReponse, messageScore } from '../utilitaires/essaiQuiz'
 import { placerFocus, useFocusTitreApresChargement } from '../utilitaires/focus'
 import { useTitrePage } from '../utilitaires/titrePage'
 
-const LIBELLES_TYPE = { qcm: 'QCM', vrai_faux: 'Vrai ou faux', ouverte: 'Question ouverte' }
-const CLASSES_TYPE = { qcm: 'type-qcm', vrai_faux: 'type-vrai-faux', ouverte: 'type-ouverte' }
 const LETTRES = 'ABCDEF'
 const APPRECIATIONS_IA = { juste: 'juste', partielle: 'partiellement juste', fausse: 'fausse' }
 
@@ -191,7 +190,7 @@ function EssaiQuiz({ id }) {
             Question {position + 1} sur {questions.length}
             <progress value={position + 1} max={questions.length} aria-hidden="true" />
           </p>
-          <span className={'type-question ' + CLASSES_TYPE[question.type]}>{LIBELLES_TYPE[question.type]}</span>
+          <EtiquetteTypeQuestion type={question.type} />
 
           {/* key : le titre est refocalisé à chaque nouvelle question */}
           <h2 key={position} id="enonce-essai" tabIndex={-1} ref={position > 0 ? placerFocus : undefined}>

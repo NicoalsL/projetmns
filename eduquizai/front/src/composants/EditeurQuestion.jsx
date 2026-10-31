@@ -1,3 +1,5 @@
+import EtiquetteTypeQuestion from './EtiquetteTypeQuestion'
+
 // Formulaire d'édition d'une question. Composant "contrôlé" : il reçoit la
 // question et renvoie chaque changement au parent (PageQuiz), qui garde
 // l'ensemble du quiz en cours d'édition.
@@ -9,9 +11,6 @@
 
 const NOMBRE_MIN_CHOIX = 2
 const NOMBRE_MAX_CHOIX = 6
-
-const LIBELLES_TYPE = { qcm: 'QCM', vrai_faux: 'Vrai ou faux', ouverte: 'Question ouverte' }
-const CLASSES_TYPE = { qcm: 'type-qcm', vrai_faux: 'type-vrai-faux', ouverte: 'type-ouverte' }
 
 function EditeurQuestion({
   question,
@@ -63,7 +62,7 @@ function EditeurQuestion({
   return (
     <fieldset className="question question-edition">
       <legend>Question {numero}</legend>
-      <span className={'type-question ' + CLASSES_TYPE[question.type]}>{LIBELLES_TYPE[question.type]}</span>
+      <EtiquetteTypeQuestion type={question.type} />
 
       <label htmlFor={prefixe + '-enonce'}>Énoncé</label>
       <textarea

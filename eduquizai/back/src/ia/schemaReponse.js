@@ -2,7 +2,7 @@
 // CHOIX — Imposer un schéma (OpenAI « structured outputs », Ollama « format »)
 // plutôt que demander du texte libre : pas besoin de « deviner » le JSON.
 // Mais le schéma garantit la FORME, pas le SENS (ex. bonne réponse hors des
-// choix) : la réponse est donc revérifiée par utilitaires/questions.js.
+// choix) : la réponse est donc revérifiée par modeles/quiz.modele.js.
 // En mode strict, OpenAI exige que tous les champs soient "required" ; un champ
 // inutile pour un type de question vaut null.
 const SCHEMA_REPONSE = {

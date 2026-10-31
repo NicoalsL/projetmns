@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
 import { OCTETS_MAX_MOT_DE_PASSE, useEnvoiAuthentification } from '../auth/useEnvoiAuthentification'
 import ChampMotDePasse from '../composants/ChampMotDePasse'
 import ChampSaisie from '../composants/ChampSaisie'
@@ -9,17 +8,10 @@ import { useTitrePage } from '../utilitaires/titrePage'
 // Page de connexion : email et mot de passe. Le cadre (onglets, bouton,
 // erreur) et l'envoi sont partagés avec PageInscription.
 function PageConnexion() {
-  const [parametres] = useSearchParams()
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const envoi = useEnvoiAuthentification('/api/auth/connexion')
   useTitrePage('Connexion')
-
-  // Anciennes adresses /connexion?onglet=inscription (favoris, historique) :
-  // l'inscription a désormais sa propre page.
-  if (parametres.get('onglet') === 'inscription') {
-    return <Navigate to="/inscription" replace />
-  }
 
   function soumettre(evenement) {
     evenement.preventDefault()

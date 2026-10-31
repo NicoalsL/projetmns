@@ -2,7 +2,6 @@
 
 | Fichier | Rôle | Utilisé par |
 |---|---|---|
-| `questions.js` | Règles sur une **liste** de questions (nombre, répartition des types) ; une question se valide dans sa classe (`modeles/question.modele.js`). | validationQuiz, genererQuiz |
 | `csv.js` | Export CSV (séparateur `;`, BOM UTF-8 pour Excel). | quiz.controleur |
 | `pdf.js` | Export PDF **balisé** (accessible, RGAA 13.3) avec pdfkit. | quiz.controleur |
 | `erreurs.js` | Hiérarchie de classes d'erreur : `ErreurMetier` (abstraite) et ses 6 classes filles (une par statut HTTP), `ErreurIa`. | services, ia, modèles |
@@ -10,9 +9,6 @@
 
 ## Choix de sécurité
 
-- **Même règle pour l'IA et pour l'enseignant** (`questions.js`) : une question est
-  reconstruite avec **seulement** les champs prévus pour son type, longueurs
-  limitées, index de bonne réponse obligatoirement dans les choix.
 - **Injection de formules CSV** (`csv.js`) : une cellule qui commence par
   `=`, `+`, `-`, `@` est préfixée d'une apostrophe, sinon Excel l'exécuterait
   comme une formule (ex. `=HYPERLINK(...)` piégé).
