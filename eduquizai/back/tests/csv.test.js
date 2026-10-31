@@ -1,7 +1,7 @@
-// Tests de l'export CSV d'un quiz (utilitaires/csv.js) : format attendu par
+// Tests de l'export CSV d'un quiz (utils/csv.js) : format attendu par
 // les tableurs et protection contre l'injection de formules.
 
-const { quizEnCsv, cellule } = require('../src/utilitaires/csv');
+const { quizEnCsv, cellule } = require('../src/utils/csv');
 
 const quizExporte = {
   titre: 'Quiz – Biologie',

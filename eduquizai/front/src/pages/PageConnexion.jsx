@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { OCTETS_MAX_MOT_DE_PASSE, useEnvoiAuthentification } from '../auth/useEnvoiAuthentification'
-import ChampMotDePasse from '../composants/ChampMotDePasse'
-import ChampSaisie from '../composants/ChampSaisie'
-import FormulaireAuthentification from '../composants/FormulaireAuthentification'
-import { useTitrePage } from '../utilitaires/titrePage'
+import ChampMotDePasse from '../components/ChampMotDePasse'
+import ChampSaisie from '../components/ChampSaisie'
+import FormulaireAuthentification from '../components/FormulaireAuthentification'
+import { useTitrePage } from '../utils/titrePage'
 
 // Page de connexion : email et mot de passe. Le cadre (onglets, bouton,
 // erreur) et l'envoi sont partagés avec PageInscription.

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { estIdentifiantSql } = require('../utilitaires/entrees');
+const { estIdentifiantSql } = require('../utils/entrees');
 const { sessionEstValide } = require('../services/session.service');
 const { cookies, NOM_SESSION } = require('./sessionCookie');
 

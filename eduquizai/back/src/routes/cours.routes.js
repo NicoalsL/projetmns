@@ -3,8 +3,8 @@ const verifierJeton = require('../middlewares/authentification');
 const { limiteurGeneration } = require('../middlewares/limiteurs');
 const { validerCours, validerIdentifiantCours } = require('../middlewares/validationCours');
 const { validerGeneration } = require('../middlewares/validationQuiz');
-const coursControleur = require('../controleurs/cours.controleur');
-const quizControleur = require('../controleurs/quiz.controleur');
+const coursControleur = require('../controllers/cours.controleur');
+const quizControleur = require('../controllers/quiz.controleur');
 
 // Rôle : adresses /api/cours, les cours et la génération d'un quiz à partir d'un cours.
 // Toutes réservées à un enseignant connecté.

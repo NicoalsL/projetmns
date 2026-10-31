@@ -1,6 +1,6 @@
-const coursDepot = require('../depots/cours.depot');
-const Cours = require('../modeles/cours.modele');
-const { ErreurIntrouvable, ErreurNonAuthentifie } = require('../utilitaires/erreurs');
+const coursDepot = require('../repositories/cours.depot');
+const Cours = require('../models/cours.modele');
+const { ErreurIntrouvable, ErreurNonAuthentifie } = require('../utils/erreurs');
 
 // Rôle : règles métier des cours. Un enseignant ne voit, ne modifie et ne
 // supprime que SES cours (contrôle fait dans les requêtes SQL du dépôt).

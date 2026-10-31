@@ -3,11 +3,11 @@
 // et le module IA sont simulés : on vérifie l'orchestration et les règles
 // métier (propriété, journal, cycle brouillon -> validé, export).
 
-jest.mock('../src/depots/cours.depot');
-jest.mock('../src/depots/quiz.depot');
-jest.mock('../src/depots/generationIa.depot');
-jest.mock('../src/ia/genererQuiz');
-jest.mock('../src/depots/journalSecurite.depot');
+jest.mock('../src/repositories/cours.depot');
+jest.mock('../src/repositories/quiz.depot');
+jest.mock('../src/repositories/generationIa.depot');
+jest.mock('../src/ai/genererQuiz');
+jest.mock('../src/repositories/journalSecurite.depot');
 // Contrôle de révocation des sessions simulé (testé dans session.test.js) :
 // fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
 jest.mock('../src/services/session.service', () => ({
@@ -16,10 +16,10 @@ jest.mock('../src/services/session.service', () => ({
 }));
 
 const jwt = require('jsonwebtoken');
-const coursDepot = require('../src/depots/cours.depot');
-const quizDepot = require('../src/depots/quiz.depot');
-const generationIaDepot = require('../src/depots/generationIa.depot');
-const { genererQuiz, evaluerReponse } = require('../src/ia/genererQuiz');
+const coursDepot = require('../src/repositories/cours.depot');
+const quizDepot = require('../src/repositories/quiz.depot');
+const generationIaDepot = require('../src/repositories/generationIa.depot');
+const { genererQuiz, evaluerReponse } = require('../src/ai/genererQuiz');
 const app = require('../src/app');
 
 const ID_ENSEIGNANT = 7;

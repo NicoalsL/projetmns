@@ -22,10 +22,10 @@ export default defineConfig({
   },
 
   // Tests de composants et de pages React (Vitest) : rendu dans un faux navigateur
-  // (jsdom). Seuls tests/composants et tests/pages sont concernés ; les autres tests du front
+  // (jsdom). Seuls tests/components et tests/pages sont concernés ; les autres tests du front
   // (fonctions sans React) tournent avec le lanceur intégré à Node.
   test: {
     environment: 'jsdom',
-    include: ['tests/composants/**/*.test.jsx', 'tests/pages/**/*.test.jsx'],
+    include: ['tests/components/**/*.test.jsx', 'tests/pages/**/*.test.jsx'],
   },
 })

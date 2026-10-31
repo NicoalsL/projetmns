@@ -10,9 +10,9 @@ import PageQuiz from './pages/PageQuiz'
 import PageEssaiQuiz from './pages/PageEssaiQuiz'
 import PageConfidentialite from './pages/PageConfidentialite'
 import PagePlanDuSite from './pages/PagePlanDuSite'
-import EnTete from './composants/EnTete'
-import GestionNavigation from './composants/GestionNavigation'
-import RouteProtegee from './composants/RouteProtegee'
+import EnTete from './components/EnTete'
+import GestionNavigation from './components/GestionNavigation'
+import RouteProtegee from './components/RouteProtegee'
 
 // Rôle : la liste des adresses du site et le cadre commun à toutes les pages
 // (lien d'évitement, en-tête, zone de contenu, pied de page).

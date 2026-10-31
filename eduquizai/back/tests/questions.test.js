@@ -1,7 +1,7 @@
-// Tests unitaires des règles de structure des questions (modeles/quiz.modele.js),
+// Tests unitaires des règles de structure des questions (models/quiz.modele.js),
 // appliquées à la réponse de l'IA comme aux modifications de l'enseignant.
 
-const Quiz = require('../src/modeles/quiz.modele');
+const Quiz = require('../src/models/quiz.modele');
 
 const { normaliserQuestions, repartirTypes, selectionnerSelonRepartition } = Quiz;
 

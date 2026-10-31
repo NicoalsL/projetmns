@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import appelApi from '../api/client'
-import FormulaireCours from '../composants/FormulaireCours'
-import { placerFocus, useFocusTitreApresChargement } from '../utilitaires/focus'
-import { useTitrePage } from '../utilitaires/titrePage'
+import FormulaireCours from '../components/FormulaireCours'
+import { placerFocus, useFocusTitreApresChargement } from '../utils/focus'
+import { useTitrePage } from '../utils/titrePage'
 
 // Page /cours/:id/modifier : charge le cours puis réutilise le formulaire de
 // création, prérempli. Les quiz déjà générés ne sont pas touchés : ils restent

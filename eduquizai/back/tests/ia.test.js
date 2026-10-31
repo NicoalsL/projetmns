@@ -1,7 +1,7 @@
 // Tests du module IA. L'API OpenAI n'est JAMAIS appelée : fetch est simulé,
 // ce qui rend les tests rapides, gratuits et reproductibles.
 
-const { genererQuiz, construireConsignes, evaluerReponse, prechaufferIa } = require('../src/ia/genererQuiz');
+const { genererQuiz, construireConsignes, evaluerReponse, prechaufferIa } = require('../src/ai/genererQuiz');
 
 const COURS = [
   'La cellule est l\'unité de base de tout être vivant.',

@@ -4,20 +4,20 @@
 jest.mock('../src/config/postgres', () => ({ query: jest.fn(), connect: jest.fn() }));
 
 const pool = require('../src/config/postgres');
-const erreurs = require('../src/utilitaires/erreurs');
-const { Question, QuestionQcm, QuestionVraiFaux, QuestionOuverte } = require('../src/modeles/question.modele');
-const DepotPostgres = require('../src/depots/depotPostgres');
-const JournalPostgres = require('../src/depots/journalPostgres');
-const coursDepot = require('../src/depots/cours.depot');
-const utilisateurDepot = require('../src/depots/utilisateur.depot');
-const quizDepot = require('../src/depots/quiz.depot');
-const generationIaDepot = require('../src/depots/generationIa.depot');
-const journalSecuriteDepot = require('../src/depots/journalSecurite.depot');
-const FournisseurIa = require('../src/ia/fournisseurs/fournisseurIa');
-const FournisseurDistant = require('../src/ia/fournisseurs/fournisseurDistant');
-const fournisseurOpenai = require('../src/ia/fournisseurs/openai');
-const fournisseurOllama = require('../src/ia/fournisseurs/ollama');
-const fournisseurSimulation = require('../src/ia/fournisseurs/simulation');
+const erreurs = require('../src/utils/erreurs');
+const { Question, QuestionQcm, QuestionVraiFaux, QuestionOuverte } = require('../src/models/question.modele');
+const DepotPostgres = require('../src/repositories/depotPostgres');
+const JournalPostgres = require('../src/repositories/journalPostgres');
+const coursDepot = require('../src/repositories/cours.depot');
+const utilisateurDepot = require('../src/repositories/utilisateur.depot');
+const quizDepot = require('../src/repositories/quiz.depot');
+const generationIaDepot = require('../src/repositories/generationIa.depot');
+const journalSecuriteDepot = require('../src/repositories/journalSecurite.depot');
+const FournisseurIa = require('../src/ai/providers/fournisseurIa');
+const FournisseurDistant = require('../src/ai/providers/fournisseurDistant');
+const fournisseurOpenai = require('../src/ai/providers/openai');
+const fournisseurOllama = require('../src/ai/providers/ollama');
+const fournisseurSimulation = require('../src/ai/providers/simulation');
 const { LimiteurDeRequetes } = require('../src/middlewares/limiteurRequetes');
 
 beforeEach(() => {

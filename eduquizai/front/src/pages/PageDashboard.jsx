@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import appelApi from '../api/client'
-import SectionCompte from '../composants/SectionCompte'
-import { placerFocus } from '../utilitaires/focus'
-import { useTitrePage } from '../utilitaires/titrePage'
-import { filtrerEtTrierCours, TRIS } from '../utilitaires/filtrerCours'
+import SectionCompte from '../components/SectionCompte'
+import { placerFocus } from '../utils/focus'
+import { useTitrePage } from '../utils/titrePage'
+import { filtrerEtTrierCours, TRIS } from '../utils/filtrerCours'
 
 function PageDashboard() {
   const [cours, setCours] = useState([])
@@ -13,7 +13,7 @@ function PageDashboard() {
   // Incrémenté par le bouton "Réessayer" pour relancer le chargement.
   const [numeroTentative, setNumeroTentative] = useState(0)
   const emplacement = useLocation()
-  // Recherche et tri appliqués côté navigateur (utilitaires/filtrerCours.js).
+  // Recherche et tri appliqués côté navigateur (utils/filtrerCours.js).
   const [recherche, setRecherche] = useState('')
   const [tri, setTri] = useState('recent')
   const coursAffiches = filtrerEtTrierCours(cours, recherche, tri)
@@ -48,7 +48,7 @@ function PageDashboard() {
     setNumeroTentative((n) => n + 1)
   }
 
-  // La déconnexion se trouve dans l'en-tête commun (composants/EnTete.jsx).
+  // La déconnexion se trouve dans l'en-tête commun (components/EnTete.jsx).
   return (
     <main className="contenu">
       <section aria-labelledby="titre-cours">

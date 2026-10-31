@@ -1,6 +1,6 @@
-const Utilisateur = require('../modeles/utilisateur.modele');
-const utilisateurDepot = require('../depots/utilisateur.depot');
-const { ErreurIntrouvable, ErreurAccesRefuse } = require('../utilitaires/erreurs');
+const Utilisateur = require('../models/utilisateur.modele');
+const utilisateurDepot = require('../repositories/utilisateur.depot');
+const { ErreurIntrouvable, ErreurAccesRefuse } = require('../utils/erreurs');
 const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 const { revoquerSessions } = require('./session.service');
 const { signalerEvenementSecurite } = require('./alertesSecurite.service');

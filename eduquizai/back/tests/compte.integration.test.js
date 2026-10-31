@@ -1,8 +1,8 @@
 // Tests HTTP du droit à l'effacement (DELETE /api/compte) et de la purge du
 // journal des générations (RGPD). Dépôts et base simulés.
 
-jest.mock('../src/depots/utilisateur.depot');
-jest.mock('../src/depots/journalSecurite.depot');
+jest.mock('../src/repositories/utilisateur.depot');
+jest.mock('../src/repositories/journalSecurite.depot');
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
 // Contrôle de révocation des sessions simulé (testé dans session.test.js) :
 // fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
@@ -15,9 +15,9 @@ jest.mock('../src/services/session.service', () => ({
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const utilisateurDepot = require('../src/depots/utilisateur.depot');
+const utilisateurDepot = require('../src/repositories/utilisateur.depot');
 const pool = require('../src/config/postgres');
-const generationIaDepot = jest.requireActual('../src/depots/generationIa.depot');
+const generationIaDepot = jest.requireActual('../src/repositories/generationIa.depot');
 const app = require('../src/app');
 
 const MOT_DE_PASSE = 'MotDePasse123';

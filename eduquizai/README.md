@@ -60,7 +60,7 @@ Le fournisseur est choisi par IA_FOURNISSEUR dans back/.env :
 | ollama | Modèle local servi par Ollama sur la machine hôte (OLLAMA_URL, défaut http://host.docker.internal:11434 ; OLLAMA_MODELE, défaut qwen3:4b ; OLLAMA_CONSERVATION, défaut 30m). Gratuit, aucun texte envoyé à un tiers. Prérequis : Ollama démarré et `ollama pull qwen3:4b`. Le modèle est préchargé au démarrage de l'API et gardé en mémoire 30 minutes. Mesuré (3 questions, modèle en mémoire) : qwen3:4b ≈ 5 s, qwen3:8b ≈ 7,8 s mais plus fidèle au cours (détail : documentation/qualite/plan-tests.md). |
 | openai | Appel à l'API OpenAI (chat/completions, sortie JSON imposée par schéma). Exige OPENAI_API_KEY ; modèle réglable par OPENAI_MODELE (gpt-4o-mini par défaut). |
 
-Après modification de .env : docker compose up -d back. La clé OpenAI reste côté serveur et n'est jamais envoyée au navigateur. Chaque appel est tracé dans la table generation_ia (statut, durée, nombre de questions). La réponse de l'IA est contrôlée par back/src/modeles/quiz.modele.js avant tout enregistrement ; une réponse non conforme est traitée comme un échec (502).
+Après modification de .env : docker compose up -d back. La clé OpenAI reste côté serveur et n'est jamais envoyée au navigateur. Chaque appel est tracé dans la table generation_ia (statut, durée, nombre de questions). La réponse de l'IA est contrôlée par back/src/models/quiz.modele.js avant tout enregistrement ; une réponse non conforme est traitée comme un échec (502).
 
 ## Données utilisées pour générer un quiz
 

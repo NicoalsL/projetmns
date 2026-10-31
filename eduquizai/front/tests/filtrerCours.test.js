@@ -1,9 +1,9 @@
 // Tests de la recherche et du tri de la liste « Mes cours »
-// (src/utilitaires/filtrerCours.js), avec le lanceur intégré à Node.
+// (src/utils/filtrerCours.js), avec le lanceur intégré à Node.
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { filtrerEtTrierCours } from '../src/utilitaires/filtrerCours.js'
+import { filtrerEtTrierCours } from '../src/utils/filtrerCours.js'
 
 const COURS = [
   { id_cours: 1, titre: 'La photosynthèse', date_creation: '2026-09-01T10:00:00Z' },

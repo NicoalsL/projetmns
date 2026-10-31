@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useTitrePage } from '../utilitaires/titrePage'
+import { useTitrePage } from '../utils/titrePage'
 
 // Page publique « Plan du site » : second système de navigation, en plus du
 // menu de l'en-tête (RGAA 12.1). Accessible depuis le pied de page de toutes

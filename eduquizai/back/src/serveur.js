@@ -36,8 +36,8 @@ async function demarrer() {
 
   // RGPD — Les deux journaux sont gardés 6 mois maximum : purge au démarrage,
   // puis chaque jour (unref() = ce minuteur n'empêche pas l'arrêt du serveur).
-  const generationIaDepot = require('./depots/generationIa.depot');
-  const journalSecuriteDepot = require('./depots/journalSecurite.depot');
+  const generationIaDepot = require('./repositories/generationIa.depot');
+  const journalSecuriteDepot = require('./repositories/journalSecurite.depot');
   async function purgerJournal() {
     try {
       const nombre = await generationIaDepot.purgerAnciens();
@@ -58,7 +58,7 @@ async function demarrer() {
 
   // Préchauffe l'IA locale sans bloquer le démarrage : l'API répond déjà.
   // Si Ollama est arrêté, on le signale seulement ; on pourra générer plus tard.
-  const { prechaufferIa } = require('./ia/genererQuiz');
+  const { prechaufferIa } = require('./ai/genererQuiz');
   prechaufferIa()
     .then((fait) => {
       if (fait) {

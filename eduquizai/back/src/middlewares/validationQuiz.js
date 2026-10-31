@@ -1,7 +1,7 @@
-const Quiz = require('../modeles/quiz.modele');
-const { TYPES_QUESTION } = require('../modeles/question.modele');
-const { estObjetJson } = require('../utilitaires/entrees');
-const { ErreurQuestion } = require('../utilitaires/erreurs');
+const Quiz = require('../models/quiz.modele');
+const { TYPES_QUESTION } = require('../models/question.modele');
+const { estObjetJson } = require('../utils/entrees');
+const { ErreurQuestion } = require('../utils/erreurs');
 
 // Rôle : vérifier tout ce qui touche aux quiz AVANT le contrôleur
 // (paramètres de génération, identifiant, version, format d'export,
@@ -122,7 +122,7 @@ function validerReponseDonnee(requete, reponse, suite) {
 }
 
 // Modification d'un quiz : un titre et des questions valides.
-// Les règles des questions sont dans modeles/quiz.modele.js et question.modele.js.
+// Les règles des questions sont dans models/quiz.modele.js et question.modele.js.
 function validerModificationQuiz(requete, reponse, suite) {
   if (!estObjetJson(requete.body)) {
     return reponse.status(400).json({ erreur: 'Un titre et des questions sont requis' });

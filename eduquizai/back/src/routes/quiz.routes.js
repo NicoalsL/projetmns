@@ -9,7 +9,7 @@ const {
   validerRevisionQuiz,
 } = require('../middlewares/validationQuiz');
 const { limiteurGeneration, limiteurCorrection } = require('../middlewares/limiteurs');
-const quizControleur = require('../controleurs/quiz.controleur');
+const quizControleur = require('../controllers/quiz.controleur');
 
 // Rôle : adresses /api/quiz/:idQuiz, lire, modifier, valider, exporter et supprimer un quiz.
 // La CRÉATION d'un quiz est ailleurs, sous /api/cours/:id/quiz (cours.routes.js),

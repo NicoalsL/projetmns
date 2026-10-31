@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import appelApi from '../api/client'
-import FormulaireCours from '../composants/FormulaireCours'
-import { useTitrePage } from '../utilitaires/titrePage'
+import FormulaireCours from '../components/FormulaireCours'
+import { useTitrePage } from '../utils/titrePage'
 
 // Page /cours/nouveau : création d'un cours. La saisie, l'import de fichier,
 // l'aperçu et les erreurs sont gérés par FormulaireCours (partagé avec la

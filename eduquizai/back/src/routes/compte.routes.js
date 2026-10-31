@@ -2,7 +2,7 @@ const express = require('express');
 const verifierJeton = require('../middlewares/authentification');
 const { limiteurConfirmationCompte } = require('../middlewares/limiteurs');
 const { validerSuppressionCompte } = require('../middlewares/validation');
-const compteControleur = require('../controleurs/compte.controleur');
+const compteControleur = require('../controllers/compte.controleur');
 
 // Rôle : adresses /api/compte, actions sur le compte de l'enseignant connecté.
 const routeur = express.Router();

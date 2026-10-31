@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
-import QuestionLecture from '../composants/QuestionLecture'
+import QuestionLecture from '../components/QuestionLecture'
 import { sessionValide } from '../auth/session'
-import { useTitrePage } from '../utilitaires/titrePage'
+import { useTitrePage } from '../utils/titrePage'
 
 // Exemple statique affiché sur l'accueil : montre au visiteur à quoi ressemble
 // une question relue, avec exactement le même rendu que dans l'application.

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import appelApi, { telechargerFichier } from '../api/client'
-import QuestionLecture from '../composants/QuestionLecture'
-import EditeurQuestion from '../composants/EditeurQuestion'
-import { placerFocus, useFocusTitreApresChargement } from '../utilitaires/focus'
-import { useTitrePage } from '../utilitaires/titrePage'
+import QuestionLecture from '../components/QuestionLecture'
+import EditeurQuestion from '../components/EditeurQuestion'
+import { placerFocus, useFocusTitreApresChargement } from '../utils/focus'
+import { useTitrePage } from '../utils/titrePage'
 
 const LIBELLES_TYPE = { qcm: 'QCM', vrai_faux: 'vrai/faux', ouverte: 'ouverte(s)' }
 const LIBELLES_NIVEAU = {

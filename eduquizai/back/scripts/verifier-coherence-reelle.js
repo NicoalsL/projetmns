@@ -23,8 +23,8 @@ if (!process.env.JWT_SECRET) {
 process.env.IA_FOURNISSEUR = 'simulation';
 
 const pool = require('../src/config/postgres');
-const coursDepot = require('../src/depots/cours.depot');
-const quizDepot = require('../src/depots/quiz.depot');
+const coursDepot = require('../src/repositories/cours.depot');
+const quizDepot = require('../src/repositories/quiz.depot');
 const app = require('../src/app');
 
 let serveur;

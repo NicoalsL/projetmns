@@ -1,4 +1,4 @@
-const journalSecuriteDepot = require('../depots/journalSecurite.depot');
+const journalSecuriteDepot = require('../repositories/journalSecurite.depot');
 
 // Rôle : noter les actions sensibles dans la table journal_securite.
 // SÉCURITÉ — Sans trace, une attaque passe inaperçue (OWASP A09).

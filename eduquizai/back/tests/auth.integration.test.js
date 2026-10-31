@@ -2,12 +2,12 @@
 // par Express, la validation, bcrypt et JWT. Seule la base est simulée
 // (mock), pour des tests rapides qui n'ont pas besoin de PostgreSQL.
 
-jest.mock('../src/depots/utilisateur.depot', () => ({
+jest.mock('../src/repositories/utilisateur.depot', () => ({
   trouverParEmail: jest.fn(),
   creer: jest.fn(),
 }));
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
-jest.mock('../src/depots/journalSecurite.depot');
+jest.mock('../src/repositories/journalSecurite.depot');
 // Contrôle de révocation des sessions simulé (testé dans session.test.js) :
 // fonction ordinaire, que jest.resetAllMocks ne réinitialise pas.
 jest.mock('../src/services/session.service', () => ({
@@ -18,7 +18,7 @@ jest.mock('../src/services/session.service', () => ({
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const express = require('express');
-const depot = require('../src/depots/utilisateur.depot');
+const depot = require('../src/repositories/utilisateur.depot');
 const pool = require('../src/config/postgres');
 const app = require('../src/app');
 const verifierJeton = require('../src/middlewares/authentification');
@@ -165,7 +165,7 @@ test('connexion : réussit avec le bon mot de passe, même refus pour tout ident
 });
 
 test('connexion : chaque tentative est tracée dans le journal de sécurité, réussie ou non', async () => {
-  const journalSecuriteDepot = require('../src/depots/journalSecurite.depot');
+  const journalSecuriteDepot = require('../src/repositories/journalSecurite.depot');
   const hache = await bcrypt.hash(utilisateurTest.motDePasse, 4);
   depot.trouverParEmail.mockResolvedValue({
     id_utilisateur: 7, nom: 'Alice', email: utilisateurTest.email, role: 'enseignant', mot_de_passe_hache: hache,

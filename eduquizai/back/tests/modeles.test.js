@@ -1,10 +1,10 @@
 // Tests du comportement des modèles métier : Question (et ses classes filles),
 // Cours, Quiz et Utilisateur.
 const bcrypt = require('bcryptjs');
-const { Question, QuestionVraiFaux } = require('../src/modeles/question.modele');
-const Cours = require('../src/modeles/cours.modele');
-const Quiz = require('../src/modeles/quiz.modele');
-const Utilisateur = require('../src/modeles/utilisateur.modele');
+const { Question, QuestionVraiFaux } = require('../src/models/question.modele');
+const Cours = require('../src/models/cours.modele');
+const Quiz = require('../src/models/quiz.modele');
+const Utilisateur = require('../src/models/utilisateur.modele');
 
 const QCM = { type: 'qcm', enonce: 'Capitale de la France ?', choix: ['Lyon', 'Paris'], bonne_reponse: 1 };
 const VRAI_FAUX = { type: 'vrai_faux', enonce: 'Paris est en France.', bonne_reponse: true, explication: 'Oui.' };

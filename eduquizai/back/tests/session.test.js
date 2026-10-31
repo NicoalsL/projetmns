@@ -1,10 +1,10 @@
 // Tests de la révocation des sessions : middleware verifierJeton et
 // session.service. Seul le dépôt des utilisateurs est simulé.
 
-jest.mock('../src/depots/utilisateur.depot');
+jest.mock('../src/repositories/utilisateur.depot');
 
 const jwt = require('jsonwebtoken');
-const utilisateurDepot = require('../src/depots/utilisateur.depot');
+const utilisateurDepot = require('../src/repositories/utilisateur.depot');
 const verifierJeton = require('../src/middlewares/authentification');
 const { revoquerSessions, prolongerSession } = require('../src/services/session.service');
 

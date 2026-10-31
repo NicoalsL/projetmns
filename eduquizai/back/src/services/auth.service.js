@@ -1,9 +1,9 @@
 const { randomBytes } = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const utilisateurDepot = require('../depots/utilisateur.depot');
-const Utilisateur = require('../modeles/utilisateur.modele');
-const { ErreurConflit, ErreurNonAuthentifie } = require('../utilitaires/erreurs');
+const utilisateurDepot = require('../repositories/utilisateur.depot');
+const Utilisateur = require('../models/utilisateur.modele');
+const { ErreurConflit, ErreurNonAuthentifie } = require('../utils/erreurs');
 const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 
 // Rôle : inscription et connexion. Stocke le mot de passe de façon sûre
