@@ -6,7 +6,7 @@ const quizRoutes = require('./routes/quiz.routes');
 const compteRoutes = require('./routes/compte.routes');
 const { schemaEstPret } = require('./config/verificationSchema');
 const gestionErreurs = require('./middlewares/gestionErreurs');
-const creerLimiteur = require('./middlewares/limitationAuth');
+const { limiteurAuthentification } = require('./middlewares/limiteurs');
 const { verifierOrigine, verifierCsrf } = require('./middlewares/sessionCookie');
 
 // Rôle : assembler l'application. Réglages de sécurité, puis routes, puis erreurs.
@@ -44,7 +44,7 @@ app.use((requete, reponse, suite) => {
 
 // SÉCURITÉ — Anti force brute : 20 essais par 15 minutes et par adresse IP.
 // Placé AVANT la lecture du JSON : une IP bloquée ne fait même pas travailler le serveur.
-app.use('/api/auth', creerLimiteur());
+app.use('/api/auth', limiteurAuthentification);
 
 // 16 ko suffisent pour l'authentification et limitent les requêtes géantes.
 app.use('/api/auth', express.json({ limit: '16kb' }));

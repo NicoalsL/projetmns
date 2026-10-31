@@ -8,7 +8,7 @@ const {
   validerReponseDonnee,
   validerRevisionQuiz,
 } = require('../middlewares/validationQuiz');
-const { limiteurGeneration, limiteurCorrection } = require('../middlewares/limiteursIa');
+const { limiteurGeneration, limiteurCorrection } = require('../middlewares/limiteurs');
 const quizControleur = require('../controleurs/quiz.controleur');
 
 // Rôle : adresses /api/quiz/:idQuiz, lire, modifier, valider, exporter et supprimer un quiz.

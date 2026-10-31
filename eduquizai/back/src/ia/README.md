@@ -50,7 +50,7 @@ Chaque fournisseur descend de `FournisseurIa` et a donc les mêmes méthodes :
 
 - **Injection de prompt** (un cours qui dit « ignore tes consignes ») : 3 couches.
   1. Cours délimité comme une **donnée**, balises `<cours>` retirées du texte.
-  2. Réponse **revalidée strictement** (`utilitaires/questions.js`) : OWASP LLM05.
+  2. Réponse **revalidée strictement** (`modeles/quiz.modele.js`) : OWASP LLM05.
   3. **Relecture et validation humaine** obligatoires avant tout export.
 - **Paramètres en listes fermées** : aucun texte libre de l'utilisateur dans les consignes.
 - **Clé OpenAI** uniquement côté serveur, jamais envoyée au navigateur ni dans les logs.

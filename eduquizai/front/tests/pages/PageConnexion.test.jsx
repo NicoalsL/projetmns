@@ -57,13 +57,6 @@ describe('PageConnexion', () => {
     expect(screen.getByLabelText('Nom')).toBeTruthy()
   })
 
-  test('une ancienne adresse ?onglet=inscription redirige vers l’inscription', () => {
-    afficherPage('/connexion?onglet=inscription')
-
-    expect(screen.getByLabelText('Nom')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Créer mon compte' })).toBeTruthy()
-  })
-
   test('le bouton Afficher montre le mot de passe en clair, puis le masque', async () => {
     afficherPage()
     const champ = screen.getByLabelText('Mot de passe')

@@ -18,7 +18,7 @@ const FournisseurDistant = require('../src/ia/fournisseurs/fournisseurDistant');
 const fournisseurOpenai = require('../src/ia/fournisseurs/openai');
 const fournisseurOllama = require('../src/ia/fournisseurs/ollama');
 const fournisseurSimulation = require('../src/ia/fournisseurs/simulation');
-const { LimiteurDeRequetes } = require('../src/middlewares/limitationAuth');
+const { LimiteurDeRequetes } = require('../src/middlewares/limiteurRequetes');
 
 beforeEach(() => {
   jest.clearAllMocks();

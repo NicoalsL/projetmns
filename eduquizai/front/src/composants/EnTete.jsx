@@ -33,7 +33,10 @@ function EnTete() {
     } catch {
       // Ne pas prétendre que la révocation a eu lieu : le cookie HttpOnly
       // peut toujours être présent lorsque le serveur est inaccessible.
-      setErreurDeconnexion('Déconnexion non confirmée : le serveur est indisponible. Réessayez. La session peut encore être active.')
+      setErreurDeconnexion(
+        'Déconnexion non confirmée : le serveur est indisponible. Réessayez. '
+          + 'La session peut encore être active.',
+      )
     } finally {
       setDeconnexionEnCours(false)
     }

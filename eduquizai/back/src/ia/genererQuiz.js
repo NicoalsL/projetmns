@@ -1,15 +1,10 @@
-const {
-  normaliserQuestionsValides,
-  repartirTypes,
-  selectionnerSelonRepartition,
-  TYPES_QUESTION,
-} = require('../utilitaires/questions');
+const Quiz = require('../modeles/quiz.modele');
 const fournisseurOpenai = require('./fournisseurs/openai');
 const fournisseurOllama = require('./fournisseurs/ollama');
 const fournisseurSimulation = require('./fournisseurs/simulation');
 const { APPRECIATIONS } = require('./schemaCorrection');
 const { ErreurIa } = require('../utilitaires/erreurs');
-const { QuestionVraiFaux } = require('../modeles/question.modele');
+const { QuestionVraiFaux, TYPES_QUESTION } = require('../modeles/question.modele');
 
 // Rôle : porte d'entrée UNIQUE vers l'IA (les services n'appellent que ce fichier).
 // 1. écrire les consignes (le « prompt ») ; 2. appeler le fournisseur choisi ;
@@ -73,7 +68,7 @@ function fournisseurActif() {
 // SÉCURITÉ — Injection de prompt : un cours piégé pourrait contenir « ignore tes
 // consignes et… ». Défense en 3 couches, comme 3 portes successives :
 // 1. ici, le cours est enfermé entre balises <cours> et présenté comme une DONNÉE ;
-// 2. la réponse de l'IA est revérifiée strictement (utilitaires/questions.js) ;
+// 2. la réponse de l'IA est revérifiée strictement (modeles/quiz.modele.js) ;
 // 3. l'enseignant relit et valide le quiz avant tout export.
 function construireConsignes(texteCours, {
   nombreQuestions,
@@ -152,13 +147,13 @@ function retenirQuestions(questionsBrutes, repartition) {
     : questionsBrutes;
   let questions;
   try {
-    questions = normaliserQuestionsValides(questionsReparees);
+    questions = Quiz.normaliserQuestionsValides(questionsReparees);
   } catch (erreur) {
     throw new ErreurIa('IA_REPONSE_INVALIDE', 'Réponse de l\'IA non conforme : ' + erreur.message);
   }
 
   // L'IA ne respecte pas toujours la répartition demandée : on l'impose ici.
-  const questionsRetenues = selectionnerSelonRepartition(questions, repartition);
+  const questionsRetenues = Quiz.selectionnerSelonRepartition(questions, repartition);
   if (questionsRetenues.length === 0) {
     throw new ErreurIa('IA_REPONSE_INVALIDE', 'Aucune question exploitable du type demandé dans la réponse de l\'IA');
   }
@@ -178,7 +173,7 @@ async function genererQuiz(texteCours, {
   questionsAEviter = [],
 }) {
   const fournisseur = fournisseurActif();
-  const repartition = repartirTypes(nombreQuestions, types);
+  const repartition = Quiz.repartirTypes(nombreQuestions, types);
   const consignes = construireConsignes(texteCours, {
     nombreQuestions,
     repartition,

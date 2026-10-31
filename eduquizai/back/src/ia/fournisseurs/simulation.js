@@ -9,7 +9,7 @@ const FournisseurIa = require('./fournisseurIa');
 const LONGUEUR_MIN_PHRASE = 25;
 const LONGUEUR_MIN_MOT_CLE = 6;
 const NOMBRE_CHOIX_QCM = 4;
-const LONGUEUR_MAX_SOURCE = 500; // = LONGUEUR_MAX_SOURCE de utilitaires/questions.js
+const LONGUEUR_MAX_SOURCE = 500; // = LONGUEUR_MAX_SOURCE de modeles/question.modele.js
 // Correction simulée : on juge selon la part des mots attendus retrouvés.
 const SEUIL_JUSTE = 0.6;
 const SEUIL_PARTIEL = 0.3;

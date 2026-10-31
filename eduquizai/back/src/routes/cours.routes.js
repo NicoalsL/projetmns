@@ -1,6 +1,6 @@
 const express = require('express');
 const verifierJeton = require('../middlewares/authentification');
-const { limiteurGeneration } = require('../middlewares/limiteursIa');
+const { limiteurGeneration } = require('../middlewares/limiteurs');
 const { validerCours, validerIdentifiantCours } = require('../middlewares/validationCours');
 const { validerGeneration } = require('../middlewares/validationQuiz');
 const coursControleur = require('../controleurs/cours.controleur');
@@ -35,7 +35,7 @@ routeur.get('/:id/generations', validerIdentifiantCours, quizControleur.historiq
 
 // Générer un quiz avec l'IA. Chaque génération coûte (calcul ou appel payant) :
 // 10 par heure et par enseignant, compté sur l'identifiant du jeton, pas sur
-// l'adresse IP, et partagé avec la régénération d'une question (limiteursIa.js).
+// l'adresse IP, et partagé avec la régénération d'une question (limiteurs.js).
 // Les validations passent AVANT le limiteur : une demande mal formée est refusée
 // sans consommer une des 10 générations de l'heure.
 routeur.post(

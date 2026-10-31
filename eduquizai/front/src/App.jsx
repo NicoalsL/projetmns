@@ -1,5 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import PageAccueil from './pages/PageAccueil'
 import PageConnexion from './pages/PageConnexion'
 import PageInscription from './pages/PageInscription'
@@ -12,64 +11,11 @@ import PageEssaiQuiz from './pages/PageEssaiQuiz'
 import PageConfidentialite from './pages/PageConfidentialite'
 import PagePlanDuSite from './pages/PagePlanDuSite'
 import EnTete from './composants/EnTete'
-import AvertissementSession from './composants/AvertissementSession'
-import { compteDuJeton, chargerSession, obtenirSession, surveillerSession } from './auth/session'
+import GestionNavigation from './composants/GestionNavigation'
+import RouteProtegee from './composants/RouteProtegee'
 
-// Redirige vers la connexion si la session est absente ou expirée.
-function RouteProtegee({ enfant }) {
-  const [jeton, setJeton] = useState(obtenirSession)
-  const [charge, setCharge] = useState(false)
-
-  // surveillerSession renvoie sa fonction d'arrêt, que React appelle au démontage.
-  useEffect(() => {
-    const arreter = surveillerSession(setJeton)
-    chargerSession().finally(() => setCharge(true))
-    return arreter
-  }, [])
-
-  if (!charge) return <p role="status">Vérification de la session…</p>
-
-  if (!jeton) {
-    return <Navigate to="/connexion" replace state={{ sessionExpiree: true }} />
-  }
-
-  // key = compte du jeton : si un autre compte se connecte dans un autre onglet,
-  // la page est recréée et recharge les données du nouveau compte (pas celles
-  // de l'ancien). Une prolongation de session garde le même compte : la page
-  // n'est pas recréée et une saisie en cours est conservée.
-  return (
-    <Fragment key={compteDuJeton()}>
-      <AvertissementSession key={jeton.expiration} jeton={jeton} />
-      {enfant}
-    </Fragment>
-  )
-}
-
-// Dans une application React, changer de page ne recharge pas le navigateur :
-// sans aide, le focus clavier resterait sur le lien cliqué (ou sur <body>) et
-// la page resterait défilée. À chaque changement d'adresse, on remonte en haut
-// et on place le focus sur le titre <h1> de la nouvelle page (ou, s'il n'est
-// pas encore chargé, sur la zone de contenu) : le lecteur d'écran l'annonce.
-function GestionNavigation() {
-  const { pathname } = useLocation()
-  const adressePrecedente = useRef(pathname)
-
-  useEffect(() => {
-    // Premier affichage : le navigateur gère lui-même le focus initial.
-    if (adressePrecedente.current === pathname) {
-      return
-    }
-    adressePrecedente.current = pathname
-
-    window.scrollTo(0, 0)
-    const cible = document.querySelector('#contenu h1') || document.getElementById('contenu')
-    cible.setAttribute('tabindex', '-1')
-    cible.focus({ preventScroll: true })
-  }, [pathname])
-
-  return null
-}
-
+// Rôle : la liste des adresses du site et le cadre commun à toutes les pages
+// (lien d'évitement, en-tête, zone de contenu, pied de page).
 function App() {
   return (
     <BrowserRouter>

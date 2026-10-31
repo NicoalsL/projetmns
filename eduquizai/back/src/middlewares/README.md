@@ -10,8 +10,10 @@ important pour la sécurité**.
 | `validation.js` | Inscription, connexion, suppression de compte. | 400 |
 | `validationCours.js` | Titre et texte d'un cours, identifiant dans l'adresse. | 400 |
 | `validationQuiz.js` | Paramètres de génération, identifiant de quiz, révision, format d'export, modifications. | 400 |
-| `limitationAuth.js` | Fabrique de limiteurs (X essais par période). | 429 |
-| `limiteursIa.js` | Quotas IA par enseignant : 10 générations/h, 30 corrections/h. | 429 |
+| `limiteurRequetes.js` | Mécanisme d'un limiteur (classe `LimiteurDeRequetes` : X essais par période). | 429 |
+| `limiteurs.js` | **Tous les quotas** de l'API : connexion (20/15 min par IP), suppression de compte (5/15 min par compte), IA (10 générations/h, 30 corrections/h par enseignant). | 429 |
+| `limitationCompteConnexion.js` | 10 échecs de connexion par compte en 15 min ; compte lui-même les 401 une fois la réponse envoyée. | 429 |
+| `sessionCookie.js` | Cookies de session HttpOnly et jeton CSRF ; vérifie l'origine et le CSRF des requêtes qui modifient. | 403 |
 | `gestionErreurs.js` | Dernier maillon : transforme toute erreur en réponse JSON propre. | 4xx/500 |
 
 ## Choix de sécurité
