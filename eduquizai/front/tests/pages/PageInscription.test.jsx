@@ -82,6 +82,21 @@ describe('PageInscription', () => {
     expect(await screen.findByRole('heading', { name: 'Tableau de bord' })).toBeTruthy()
   })
 
+  test('6 emojis ne font pas 12 caractères : refus avant tout appel à l’API', async () => {
+    afficherPage()
+
+    await userEvent.type(screen.getByLabelText('Nom'), 'Camille')
+    await userEvent.type(screen.getByLabelText('Adresse email'), 'camille@exemple.fr')
+    // 6 emojis = 12 unités UTF-16 : l'attribut minLength du navigateur les laisserait passer.
+    await userEvent.type(screen.getByLabelText('Mot de passe'), '😀'.repeat(6))
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Créer mon compte' }))
+
+    expect(screen.getByRole('alert').textContent).toContain('au moins 12 caractères')
+    expect(screen.getByLabelText('Mot de passe').getAttribute('aria-invalid')).toBe('true')
+    expect(appelApi).not.toHaveBeenCalled()
+  })
+
   test('erreur sur le nom : seul le champ Nom est marqué, l’aide reste reliée au mot de passe', async () => {
     appelApi.mockRejectedValue(new Error('Le nom est obligatoire'))
     afficherPage()

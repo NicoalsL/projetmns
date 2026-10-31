@@ -131,6 +131,21 @@ test('inscription : mot de passe de 11 caractères refusé, 12 caractères accep
   expect(depot.creer).toHaveBeenCalledTimes(1);
 });
 
+// SÉCURITÉ — Un emoji occupe 2 unités UTF-16 : « .length » comptait 6 emojis
+// comme 12 caractères. On compte maintenant les vrais caractères (points de code).
+test('inscription : 6 emojis sont refusés, 12 emojis sont acceptés (emojis autorisés)', async () => {
+  depot.trouverParEmail.mockResolvedValue(null);
+  depot.creer.mockResolvedValue({ id_utilisateur: 10, nom: 'Alice', email: utilisateurTest.email, role: 'enseignant' });
+
+  const sixEmojis = await envoyerJson('/api/auth/inscription', { ...utilisateurTest, motDePasse: '😀'.repeat(6) });
+  const douzeEmojis = await envoyerJson('/api/auth/inscription', { ...utilisateurTest, motDePasse: '😀'.repeat(12) });
+
+  expect(sixEmojis.status).toBe(400);
+  expect((await sixEmojis.json()).erreur).toContain('au moins 12 caractères');
+  expect(douzeEmojis.status).toBe(201);
+  expect(depot.creer).toHaveBeenCalledTimes(1);
+});
+
 test('connexion : un ancien compte au mot de passe de 8 caractères peut toujours se connecter', async () => {
   const ancienMotDePasse = 'Ancien-8';
   const hache = await bcrypt.hash(ancienMotDePasse, 4);

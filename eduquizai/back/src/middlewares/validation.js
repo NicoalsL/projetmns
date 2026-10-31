@@ -32,12 +32,22 @@ function normaliserEmail(email) {
   return email.trim().toLowerCase();
 }
 
-// SÉCURITÉ — bcrypt ignore tout ce qui dépasse 72 octets : deux mots de passe
-// identiques sur leurs 72 premiers octets seraient vus comme égaux.
-// On compte en octets, pas en caractères : « é » prend 2 octets.
+// SÉCURITÉ — Nombre de caractères réels, comme le demandent l'OWASP ASVS et le
+// NIST (SP 800-63B) : chaque point de code Unicode compte pour un caractère.
+// « texte.length » compte des unités UTF-16, et un emoji en occupe 2 : avec lui,
+// 6 emojis passaient pour 12 caractères. Les emojis restent autorisés (ASVS V2.1.4).
+function nombreDeCaracteres(texte) {
+  return Array.from(texte).length;
+}
+
+// Deux limites, comptées différemment :
+// - le minimum en caractères (ce que l'utilisateur tape) ;
+// - le maximum en octets. SÉCURITÉ — bcrypt ignore tout ce qui dépasse 72 octets :
+//   deux mots de passe identiques sur leurs 72 premiers octets seraient vus comme égaux.
+//   On compte en octets, pas en caractères : « é » prend 2 octets.
 function motDePasseValide(motDePasse, longueurMinimum) {
   return typeof motDePasse === 'string'
-    && motDePasse.length >= longueurMinimum
+    && nombreDeCaracteres(motDePasse) >= longueurMinimum
     && Buffer.byteLength(motDePasse, 'utf8') <= OCTETS_MAX_MOT_DE_PASSE;
 }
 

@@ -27,7 +27,16 @@ function champsConcernes(message) {
   return correspondance ? correspondance[1] : []
 }
 
-export function useEnvoiAuthentification(cheminApi) {
+// SÉCURITÉ — Nombre de caractères réels (points de code Unicode), comme le back :
+// « texte.length » et l'attribut HTML minLength comptent des unités UTF-16, et un
+// emoji en occupe 2. Sans cela, 6 emojis passaient pour 12 caractères.
+export function nombreDeCaracteres(texte) {
+  return Array.from(texte).length
+}
+
+// longueurMinMotDePasse : 12 à l'inscription, 1 à la connexion (les anciens comptes
+// gardent un mot de passe plus court). Le back fait la même vérification et fait foi.
+export function useEnvoiAuthentification(cheminApi, { longueurMinMotDePasse = 1 } = {}) {
   const [erreur, setErreur] = useState('')
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   // Un état React n'est mis à jour qu'au rendu suivant : un double-clic
@@ -47,6 +56,11 @@ export function useEnvoiAuthentification(cheminApi) {
       return
     }
     setErreur('')
+
+    if (nombreDeCaracteres(corps.motDePasse) < longueurMinMotDePasse) {
+      setErreur(`Le mot de passe doit contenir au moins ${longueurMinMotDePasse} caractères.`)
+      return
+    }
 
     if (new TextEncoder().encode(corps.motDePasse).length > OCTETS_MAX_MOT_DE_PASSE) {
       setErreur('Le mot de passe ne doit pas dépasser 72 octets UTF-8.')
