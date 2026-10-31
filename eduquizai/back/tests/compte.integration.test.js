@@ -168,3 +168,41 @@ describe('purge du journal des générations', () => {
     expect(parametres).toEqual(['6 months']);
   });
 });
+
+describe('profil du compte (GET /api/compte)', () => {
+  function consulterProfil(idUtilisateur) {
+    const jeton = jwt.sign({ id_utilisateur: idUtilisateur }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    return fetch(urlBase + '/api/compte', { headers: { Authorization: 'Bearer ' + jeton } });
+  }
+
+  test('renvoie le nom et l’email du compte du jeton, jamais l’empreinte du mot de passe', async () => {
+    const id = prochainId++;
+    utilisateurDepot.trouverProfil.mockResolvedValue({
+      id_utilisateur: id,
+      nom: 'Camille',
+      email: 'camille@exemple.fr',
+    });
+
+    const reponse = await consulterProfil(id);
+
+    expect(reponse.status).toBe(200);
+    expect(await reponse.json()).toEqual({ id_utilisateur: id, nom: 'Camille', email: 'camille@exemple.fr' });
+    // SÉCURITÉ — L'identité vient du jeton : c'est son identifiant qui est cherché.
+    expect(utilisateurDepot.trouverProfil).toHaveBeenCalledWith(id);
+  });
+
+  test('refusé sans jeton (401), sans accès à la base', async () => {
+    const reponse = await fetch(urlBase + '/api/compte');
+
+    expect(reponse.status).toBe(401);
+    expect(utilisateurDepot.trouverProfil).not.toHaveBeenCalled();
+  });
+
+  test('compte supprimé entre-temps : 404', async () => {
+    utilisateurDepot.trouverProfil.mockResolvedValue(null);
+
+    const reponse = await consulterProfil(prochainId++);
+
+    expect(reponse.status).toBe(404);
+  });
+});

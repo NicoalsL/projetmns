@@ -22,8 +22,9 @@ function PagePlanDuSite() {
           <li>
             Espace enseignant (après connexion)
             <ul>
-              <li><Link to="/dashboard">Mes cours : liste, recherche et suppression du compte</Link></li>
+              <li><Link to="/dashboard">Mes cours : liste et recherche</Link></li>
               <li><Link to="/cours/nouveau">Nouveau cours</Link></li>
+              <li><Link to="/compte">Mon compte : informations, données personnelles et suppression du compte</Link></li>
               <li>
                 Depuis un cours : détail du cours, génération d’un quiz, relecture, modification,
                 test et export du quiz

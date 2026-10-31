@@ -36,6 +36,12 @@ describe('EnTete', () => {
     expect(screen.getByRole('alert').textContent).toContain('Déconnexion non confirmée')
   })
 
+  test('un enseignant connecté trouve le lien « Mon compte »', () => {
+    render(<MemoryRouter><EnTete /></MemoryRouter>)
+
+    expect(screen.getByRole('link', { name: 'Mon compte' }).getAttribute('href')).toBe('/compte')
+  })
+
   test('le logo ramène à l’accueil', () => {
     render(<MemoryRouter><EnTete /></MemoryRouter>)
     expect(screen.getByRole('link', { name: 'EduQuizAI, accueil' }).getAttribute('href')).toBe('/')

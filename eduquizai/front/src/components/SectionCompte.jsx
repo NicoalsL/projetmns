@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
+import { startTransition, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import appelApi from '../api/client'
 import { fermerSession } from '../auth/session'
 import { placerFocus } from '../utils/focus'
 
-// Section "Mon compte" du tableau de bord : droit à l'effacement (RGPD).
+// Zone « Supprimer mon compte » de la page Mon compte (PageCompte) : droit à
+// l'effacement (RGPD).
 // La suppression est définitive : confirmation en deux temps et mot de passe
 // redemandé (vérifié par l'API).
 function SectionCompte() {
@@ -23,18 +24,25 @@ function SectionCompte() {
 
   async function supprimer(evenement) {
     evenement.preventDefault()
-    if (verrouSuppression.current) return
+    if (verrouSuppression.current) {
+      return
+    }
     verrouSuppression.current = true
     setSuppressionEnCours(true)
     setErreur('')
 
     try {
       await appelApi('/api/compte', { method: 'DELETE', body: JSON.stringify({ motDePasse }) })
-      fermerSession()
+      // React Router change de page dans une « transition » (mise à jour de faible
+      // priorité). Fermer la session normalement passait AVANT : RouteProtegee voyait
+      // la session disparaître sur la page protégée et redirigeait elle-même avec son
+      // message « session expirée », qui remplaçait celui-ci. Dans la même transition,
+      // React applique les deux ensemble : on quitte la page, puis la session se ferme.
       navigue('/connexion', {
         replace: true,
         state: { message: 'Votre compte et toutes vos données ont été supprimés.' },
       })
+      startTransition(() => fermerSession())
     } catch (e) {
       setErreur(e.message)
       verrouSuppression.current = false
@@ -43,8 +51,8 @@ function SectionCompte() {
   }
 
   return (
-    <section className="section-compte" aria-labelledby="titre-compte">
-      <h2 id="titre-compte">Mon compte</h2>
+    <section className="section-compte" aria-labelledby="titre-suppression">
+      <h2 id="titre-suppression">Supprimer mon compte</h2>
 
       {!formulaireAffiche && (
         <button type="button" className="bouton-danger" onClick={() => setFormulaireAffiche(true)}>

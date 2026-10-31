@@ -54,6 +54,7 @@ function EnTete() {
             {/* end : "Mes cours" n'est pas la page courante sur /cours/nouveau */}
             <li><NavLink to="/dashboard" end>Mes cours</NavLink></li>
             <li><NavLink to="/cours/nouveau">Nouveau cours</NavLink></li>
+            <li><NavLink to="/compte">Mon compte</NavLink></li>
             <li><button type="button" onClick={deconnexion} disabled={deconnexionEnCours}>Se déconnecter</button></li>
           </ul>
         ) : (

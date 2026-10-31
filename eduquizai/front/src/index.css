@@ -1814,6 +1814,12 @@ td .bouton {
   margin-top: 0;
 }
 
+/* Pas d'espace vide en bas de la carte : la marge du dernier élément s'ajoutait au padding */
+.section-compte > :last-child,
+.section-compte dd:last-child {
+  margin-bottom: 0;
+}
+
 .section-compte dl {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
