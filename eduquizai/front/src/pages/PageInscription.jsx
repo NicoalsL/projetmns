@@ -17,7 +17,9 @@ function PageInscription() {
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const [consentement, setConsentement] = useState(false)
-  const envoi = useEnvoiAuthentification('/api/auth/inscription')
+  const envoi = useEnvoiAuthentification('/api/auth/inscription', {
+    longueurMinMotDePasse: LONGUEUR_MIN_MOT_DE_PASSE,
+  })
   useTitrePage('Créer un compte')
 
   function soumettre(evenement) {
