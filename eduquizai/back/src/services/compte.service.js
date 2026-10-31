@@ -37,4 +37,13 @@ async function deconnecter(idUtilisateur) {
   signalerEvenementSecurite('session_revoquee');
 }
 
-module.exports = { supprimerCompte, deconnecter };
+// Profil de l'enseignant connecté (page « Mon compte ») : nom et email uniquement.
+async function consulterProfil(idUtilisateur) {
+  const ligne = await utilisateurDepot.trouverProfil(idUtilisateur);
+  if (!ligne) {
+    throw new ErreurIntrouvable('Compte introuvable');
+  }
+  return new Utilisateur(ligne).versProfilPublic();
+}
+
+module.exports = { consulterProfil, supprimerCompte, deconnecter };

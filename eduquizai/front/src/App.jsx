@@ -3,6 +3,7 @@ import PageAccueil from './pages/PageAccueil'
 import PageConnexion from './pages/PageConnexion'
 import PageInscription from './pages/PageInscription'
 import PageDashboard from './pages/PageDashboard'
+import PageCompte from './pages/PageCompte'
 import PageCreationCours from './pages/PageCreationCours'
 import PageDetailCours from './pages/PageDetailCours'
 import PageModificationCours from './pages/PageModificationCours'
@@ -34,6 +35,7 @@ function App() {
           <Route path="/confidentialite" element={<PageConfidentialite />} />
           <Route path="/plan-du-site" element={<PagePlanDuSite />} />
           <Route path="/dashboard" element={<RouteProtegee enfant={<PageDashboard />} />} />
+          <Route path="/compte" element={<RouteProtegee enfant={<PageCompte />} />} />
           <Route path="/cours/nouveau" element={<RouteProtegee enfant={<PageCreationCours />} />} />
           <Route path="/cours/:id" element={<RouteProtegee enfant={<PageDetailCours />} />} />
           <Route path="/cours/:id/modifier" element={<RouteProtegee enfant={<PageModificationCours />} />} />

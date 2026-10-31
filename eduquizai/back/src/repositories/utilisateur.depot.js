@@ -25,6 +25,15 @@ class UtilisateurDepot extends DepotPostgres {
     );
   }
 
+  // Profil affiché sur la page « Mon compte ».
+  // SÉCURITÉ — Moindre exposition : seulement les colonnes affichées, jamais l'empreinte.
+  trouverProfil(idUtilisateur) {
+    return this.trouverUne(
+      'SELECT id_utilisateur, nom, email FROM utilisateur WHERE id_utilisateur = $1',
+      [idUtilisateur],
+    );
+  }
+
   // RGPD — Consentement enregistré AVEC sa date : c'est la preuve demandée par
   // l'article 7. (Sans case cochée, la validation a déjà refusé l'inscription.)
   creer({ nom, email, motDePasseHache }) {

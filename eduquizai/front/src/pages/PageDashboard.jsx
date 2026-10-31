@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import appelApi from '../api/client'
-import SectionCompte from '../components/SectionCompte'
 import { placerFocus } from '../utils/focus'
 import { useTitrePage } from '../utils/titrePage'
 import { filtrerEtTrierCours, TRIS } from '../utils/filtrerCours'
@@ -138,8 +137,6 @@ function PageDashboard() {
           </div>
         )}
       </section>
-
-      <SectionCompte />
     </main>
   )
 }

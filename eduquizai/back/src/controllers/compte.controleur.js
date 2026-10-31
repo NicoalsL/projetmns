@@ -6,6 +6,16 @@ const { deposerSession, effacerSession } = require('../middlewares/sessionCookie
 // Rôle : traduire les requêtes HTTP sur le compte en appels à compte.service.js.
 // L'enseignant concerné est toujours celui du jeton (requete.utilisateur).
 
+// GET /api/compte -> 200 : nom et email de l'enseignant connecté.
+async function consulter(requete, reponse, suite) {
+  try {
+    const profil = await compteService.consulterProfil(requete.utilisateur.id_utilisateur);
+    reponse.json(profil);
+  } catch (erreur) {
+    suite(erreur);
+  }
+}
+
 // DELETE /api/compte -> 204 : compte et toutes ses données supprimés (droit à l'effacement RGPD).
 async function supprimer(requete, reponse, suite) {
   try {
@@ -40,4 +50,4 @@ function etatSession(requete, reponse) {
   reponse.json({ expiration: requete.utilisateur.exp * 1000, id_utilisateur: requete.utilisateur.id_utilisateur });
 }
 
-module.exports = { supprimer, deconnecter, prolonger, etatSession };
+module.exports = { consulter, supprimer, deconnecter, prolonger, etatSession };

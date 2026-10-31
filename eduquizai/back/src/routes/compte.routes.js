@@ -10,6 +10,8 @@ const routeur = express.Router();
 routeur.use(verifierJeton); // toutes ces routes exigent d'être connecté
 routeur.use(express.json({ limit: '16kb' })); // corps de requête petit : 16 ko maximum
 
+// Profil de l'enseignant connecté (page « Mon compte »).
+routeur.get('/', compteControleur.consulter);
 // SÉCURITÉ — Supprimer son compte redemande le mot de passe, avec un nombre
 // d'essais limité (voir limiteurs.js).
 routeur.delete('/', limiteurConfirmationCompte, validerSuppressionCompte, compteControleur.supprimer);
