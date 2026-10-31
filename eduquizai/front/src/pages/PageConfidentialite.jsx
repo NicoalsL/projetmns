@@ -109,9 +109,10 @@ function PageConfidentialite() {
       <h2>Vos droits</h2>
       <p>
         Vous disposez d’un droit d’accès, de rectification, d’effacement, de limitation, d’opposition et de
-        portabilité de vos données. Vous pouvez supprimer vous-même votre compte et toutes vos données depuis
-        votre tableau de bord (« Supprimer mon compte ») ; l’export JSON de vos quiz validés permet d’en
-        récupérer le contenu. Pour les autres demandes, écrivez à contact-rgpd@schoolup.example. Vous pouvez
+        portabilité de vos données. Vous pouvez consulter vos informations et supprimer vous-même votre compte
+        et toutes vos données depuis la page <Link to="/compte">Mon compte</Link> (« Supprimer mon compte ») ;
+        l’export JSON de vos quiz validés permet d’en récupérer le contenu.
+        Pour les autres demandes, écrivez à contact-rgpd@schoolup.example. Vous pouvez
         également adresser une réclamation à la CNIL (www.cnil.fr).
       </p>
     </main>

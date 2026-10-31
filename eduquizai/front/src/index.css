@@ -106,6 +106,8 @@
   --icone-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.5'/%3E%3Cpath d='M8 7.5v3.5M8 5v.01'/%3E%3C/svg%3E");
   --icone-etincelle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.5q.9 4.6 5.5 6.5-4.6 1.9-5.5 6.5-.9-4.6-5.5-6.5 4.6-1.9 5.5-6.5z'/%3E%3C/svg%3E");
   --icone-poubelle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5h11M6.5 4.5V2.8h3v1.7M4 4.5l.8 9h6.4l.8-9M6.8 7v4M9.2 7v4'/%3E%3C/svg%3E");
+  --icone-menu: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M2.5 4h11M2.5 8h11M2.5 12h11'/%3E%3C/svg%3E");
+  --icone-fermer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M3.5 3.5l9 9M12.5 3.5l-9 9'/%3E%3C/svg%3E");
 }
 
 /* Titres plus grands dès que la place le permet */
@@ -882,6 +884,188 @@ button[aria-busy="true"]::before {
 .entete button:hover {
   color: var(--principale-texte);
   background-color: var(--surface-2);
+}
+
+/* Navigation de l'enseignant connecté (NavigationEnseignant.jsx), mobile
+   d'abord : les liens sont repliés derrière le bouton « Menu » et s'ouvrent
+   dans un panneau pleine largeur sous l'en-tête, une entrée par ligne.
+   Sélecteurs préfixés par .entete : la règle « .entete nav ul » l'emporterait sinon. */
+.entete {
+  position: relative; /* repère du panneau du menu mobile */
+}
+
+.entete .navigation-enseignant > ul {
+  display: none;
+}
+
+.entete .navigation-enseignant.ouverte > ul {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--espace-1);
+  padding: var(--espace-3) var(--espace-4) var(--espace-4);
+  background-color: var(--surface);
+  border-bottom: 2px solid var(--bordure-legere);
+  /* Ombre pleine (charte) : le panneau se détache nettement de la page dessous */
+  box-shadow: 0 var(--relief) 0 var(--bordure-relief);
+}
+
+/* Bouton « Menu » : icône « trois traits », remplacée par une croix une fois ouvert */
+.entete .bouton-menu {
+  min-height: var(--hauteur-cible);
+  padding: 0 var(--espace-3);
+  color: var(--principale-texte);
+  background-color: var(--surface);
+  border-color: var(--bordure-legere);
+  border-radius: var(--rayon);
+  box-shadow: none;
+}
+
+.bouton-menu::before {
+  content: "";
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: currentColor;
+  -webkit-mask: var(--icone-menu) center / contain no-repeat;
+  mask: var(--icone-menu) center / contain no-repeat;
+}
+
+.bouton-menu[aria-expanded="true"]::before {
+  -webkit-mask-image: var(--icone-fermer);
+  mask-image: var(--icone-fermer);
+}
+
+/* Toutes les entrées du menu ont le même aspect : une ligne pleine largeur,
+   texte aligné à gauche, hauteur confortable au doigt (48 px) */
+.entete .navigation-enseignant a,
+.entete .menu-compte > button,
+.entete .menu-compte > ul button {
+  width: 100%;
+  min-height: var(--hauteur-cible);
+  justify-content: flex-start;
+  padding: 0 var(--espace-3);
+  color: var(--texte-secondaire);
+  background-color: var(--surface);
+  border: 2px solid var(--surface);
+  border-radius: var(--rayon);
+  box-shadow: none;
+  transform: none;
+}
+
+.entete .menu-compte > button:hover,
+.entete .menu-compte > ul button:hover,
+.entete .menu-compte > button[aria-expanded="true"] {
+  color: var(--principale-texte);
+  background-color: var(--surface-2);
+}
+
+/* Le bouton « Mon compte » ne sert qu'à déplier la liste sur grand écran :
+   sur mobile, ses deux entrées sont affichées directement (un seul clic). */
+.entete .menu-compte > button {
+  display: none;
+}
+
+/* Sur la page « Mon compte », le bouton est marqué comme un lien actif */
+.entete .menu-compte > button.actif {
+  color: var(--principale-texte);
+  background-color: var(--principale-claire);
+  border-color: var(--principale);
+}
+
+/* Partie « compte », séparée des liens de travail par un trait */
+.entete .menu-compte > ul {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* sinon centré, hérité de « .entete nav ul » */
+  gap: var(--espace-1);
+  margin: var(--espace-1) 0 0;
+  padding: var(--espace-2) 0 0;
+  list-style: none;
+  border-top: 2px solid var(--bordure-legere);
+}
+
+/* « Se déconnecter » en violet : action de sortie, repérable d'un coup d'œil */
+.entete .menu-compte > ul button {
+  color: var(--principale-texte);
+}
+
+/* Grand écran : plus de bouton « Menu », liens en ligne ; « Mon compte »
+   s'ouvre dans un petit panneau aligné à droite sous le bouton */
+@media (min-width: 40rem) {
+  .entete .bouton-menu {
+    display: none;
+  }
+
+  .entete .navigation-enseignant > ul,
+  .entete .navigation-enseignant.ouverte > ul {
+    position: static;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .entete .navigation-enseignant a,
+  .entete .menu-compte > button {
+    width: auto;
+  }
+
+  .entete .menu-compte > button {
+    display: inline-flex;
+  }
+
+  /* Flèche qui se retourne quand le menu est ouvert */
+  .menu-compte > button::after {
+    content: "";
+    width: 0.5em;
+    height: 0.5em;
+    margin-left: var(--espace-1);
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-25%) rotate(45deg);
+  }
+
+  .menu-compte > button[aria-expanded="true"]::after {
+    transform: translateY(25%) rotate(-135deg);
+  }
+
+  .menu-compte {
+    position: relative;
+  }
+
+  /* Liste fermée par défaut ; MenuCompte ajoute la classe « ouvert » */
+  .entete .menu-compte > ul {
+    display: none;
+  }
+
+  .entete .menu-compte.ouvert > ul {
+    position: absolute;
+    top: calc(100% + var(--espace-2));
+    right: 0;
+    z-index: 20;
+    display: flex;
+    min-width: 15rem;
+    margin: 0;
+    padding: var(--espace-2);
+    background-color: var(--surface);
+    border: 2px solid var(--bordure-legere);
+    border-radius: var(--rayon);
+    box-shadow: 0 var(--relief) 0 var(--bordure-relief); /* ombre pleine, comme la charte */
+  }
+
+  /* Dans le panneau, « Se déconnecter » est séparé de « Gérer mon compte » */
+  .entete .menu-compte > ul > li + li {
+    margin-top: var(--espace-1);
+    padding-top: var(--espace-2);
+    border-top: 2px solid var(--bordure-legere);
+  }
 }
 
 /* Contenu principal */
@@ -2212,7 +2396,8 @@ thead th,
 }
 
 /* En-tête toujours visible au défilement, sur grand écran seulement : sur
-   mobile, ses trois lignes cacheraient près d'un cinquième de l'écran.
+   mobile, il retirerait de la hauteur à un écran déjà court, et le panneau
+   du menu ouvert pourrait dépasser de l'écran sans pouvoir défiler.
    Un élément atteint au clavier ne doit pas passer dessous (WCAG 2.4.11). */
 @media (min-width: 40rem) {
   .entete {
