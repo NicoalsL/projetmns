@@ -1,18 +1,18 @@
-const { genererQuiz, evaluerReponse } = require('../ia/genererQuiz');
-const coursDepot = require('../depots/cours.depot');
-const quizDepot = require('../depots/quiz.depot');
-const generationIaDepot = require('../depots/generationIa.depot');
-const Cours = require('../modeles/cours.modele');
-const Quiz = require('../modeles/quiz.modele');
+const { genererQuiz, evaluerReponse } = require('../ai/genererQuiz');
+const coursDepot = require('../repositories/cours.depot');
+const quizDepot = require('../repositories/quiz.depot');
+const generationIaDepot = require('../repositories/generationIa.depot');
+const Cours = require('../models/cours.modele');
+const Quiz = require('../models/quiz.modele');
 const {
   ErreurConflit,
   ErreurDonneesInvalides,
   ErreurIntrouvable,
   ErreurServiceIa,
-} = require('../utilitaires/erreurs');
+} = require('../utils/erreurs');
 const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 
-// Rôle : le cœur métier du projet. Générer (via ia/genererQuiz.js), modifier,
+// Rôle : le cœur métier du projet. Générer (via ai/genererQuiz.js), modifier,
 // valider, exporter un quiz.
 // Chaque fonction vérifie d'abord que le quiz (ou le cours) est à l'enseignant
 // connecté : sinon 404, comme s'il n'existait pas.
@@ -22,7 +22,7 @@ const { tracer, EVENEMENTS } = require('./journalSecurite.service');
 // CHOIX — Validation humaine obligatoire (« Éthique » du CDC) : l'IA peut se
 // tromper, l'enseignant reste responsable de ce qu'il distribue.
 // CHOIX — POO : les règles propres à un cours ou à un quiz sont dans leurs classes
-// (modeles/cours.modele.js, modeles/quiz.modele.js) ; ce service orchestre :
+// (models/cours.modele.js, models/quiz.modele.js) ; ce service orchestre :
 // il vérifie la propriété, appelle l'IA et les dépôts, et lève les erreurs métier.
 
 function normaliserPourCitation(texte) {

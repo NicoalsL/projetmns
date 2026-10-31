@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { OCTETS_MAX_MOT_DE_PASSE, useEnvoiAuthentification } from '../auth/useEnvoiAuthentification'
-import CaseConsentement from '../composants/CaseConsentement'
-import ChampMotDePasse from '../composants/ChampMotDePasse'
-import ChampSaisie from '../composants/ChampSaisie'
-import FormulaireAuthentification from '../composants/FormulaireAuthentification'
-import { useTitrePage } from '../utilitaires/titrePage'
+import CaseConsentement from '../components/CaseConsentement'
+import ChampMotDePasse from '../components/ChampMotDePasse'
+import ChampSaisie from '../components/ChampSaisie'
+import FormulaireAuthentification from '../components/FormulaireAuthentification'
+import { useTitrePage } from '../utils/titrePage'
 
 // Mêmes limites que la table utilisateur (schema.sql) et que le back.
 const LONGUEUR_MAX_NOM = 100

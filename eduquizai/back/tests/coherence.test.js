@@ -4,8 +4,8 @@ jest.mock('../src/config/postgres', () => ({ query: jest.fn(), connect: jest.fn(
 const fs = require('node:fs');
 const path = require('node:path');
 const pool = require('../src/config/postgres');
-const coursDepot = require('../src/depots/cours.depot');
-const quizDepot = require('../src/depots/quiz.depot');
+const coursDepot = require('../src/repositories/cours.depot');
+const quizDepot = require('../src/repositories/quiz.depot');
 
 beforeEach(() => jest.resetAllMocks());
 

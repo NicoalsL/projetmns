@@ -1,6 +1,6 @@
 // Vérification RÉELLE du fournisseur OpenAI : une génération de 3 questions
 // (une de chaque type) envoyée à l'API OpenAI à travers le module de
-// l'application (ia/genererQuiz.js), comme le fait le service en production.
+// l'application (ai/genererQuiz.js), comme le fait le service en production.
 //
 //   OPENAI_API_KEY=sk-... node scripts/verifier-openai-reel.js
 //
@@ -10,7 +10,7 @@
 
 process.env.IA_FOURNISSEUR = 'openai';
 
-const { genererQuiz } = require('../src/ia/genererQuiz');
+const { genererQuiz } = require('../src/ai/genererQuiz');
 
 const OBJECTIF_DUREE_MS = 5000; // critère du CDC : < 5 s pour un quiz simple
 

@@ -1,4 +1,4 @@
-const { ErreurMetier } = require('../utilitaires/erreurs');
+const { ErreurMetier } = require('../utils/erreurs');
 
 // Rôle : dernier maillon de la chaîne. Reçoit toute erreur non traitée et
 // renvoie une réponse JSON propre.

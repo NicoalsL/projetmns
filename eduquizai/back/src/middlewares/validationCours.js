@@ -1,6 +1,6 @@
 const LONGUEUR_MAX_TITRE = 200; // = VARCHAR(200) dans schema.sql
 const LONGUEUR_MAX_CONTENU = 50000; // limite métier : un chapitre de cours
-const { ID_SQL_MAX, estObjetJson } = require('../utilitaires/entrees');
+const { ID_SQL_MAX, estObjetJson } = require('../utils/entrees');
 
 // Rôle : vérifier un cours (titre, texte) et son numéro dans l'adresse,
 // AVANT le contrôleur. Donnée invalide : réponse 400.

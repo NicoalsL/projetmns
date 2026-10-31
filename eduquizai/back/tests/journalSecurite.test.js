@@ -4,7 +4,7 @@
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
 
 const pool = require('../src/config/postgres');
-const journalSecuriteDepot = require('../src/depots/journalSecurite.depot');
+const journalSecuriteDepot = require('../src/repositories/journalSecurite.depot');
 const { tracer, EVENEMENTS } = require('../src/services/journalSecurite.service');
 
 beforeEach(() => {

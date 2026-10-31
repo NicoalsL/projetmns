@@ -6,7 +6,7 @@ const OCTETS_MAX_MOT_DE_PASSE = 72; // limite de bcrypt
 // l'OWASP ASVS (V2.1.1). Les comptes plus anciens se connectent toujours.
 const LONGUEUR_MIN_MOT_DE_PASSE = 12;
 
-const { estObjetJson } = require('../utilitaires/entrees');
+const { estObjetJson } = require('../utils/entrees');
 
 // Rôle : vérifier les données du compte (inscription, connexion, suppression)
 // AVANT le contrôleur. Donnée invalide : réponse 400 avec un message clair.

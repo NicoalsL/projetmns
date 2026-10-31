@@ -1,8 +1,8 @@
-// Tests des règles du mode « Tester le quiz » (src/utilitaires/essaiQuiz.js).
+// Tests des règles du mode « Tester le quiz » (src/utils/essaiQuiz.js).
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { calculerScore, estBonneReponse, messageScore } from '../src/utilitaires/essaiQuiz.js'
+import { calculerScore, estBonneReponse, messageScore } from '../src/utils/essaiQuiz.js'
 
 const QCM = { type: 'qcm', choix: ['A', 'B', 'C'], bonne_reponse: 1 }
 const VRAI_FAUX = { type: 'vrai_faux', bonne_reponse: false }

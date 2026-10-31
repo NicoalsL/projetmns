@@ -37,7 +37,7 @@ export function useEnvoiAuthentification(cheminApi) {
   const champsEnErreur = erreur ? champsConcernes(erreur) : []
 
   // Propriétés communes aux champs : sont-ils concernés par l'erreur affichée,
-  // et quel message les décrit (voir utilitaires/champsFormulaire.js).
+  // et quel message les décrit (voir utils/champsFormulaire.js).
   function liaisonErreur(champ) {
     return { enErreur: champsEnErreur.includes(champ), idErreur: ID_ERREUR }
   }

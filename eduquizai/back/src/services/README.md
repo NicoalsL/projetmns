@@ -1,7 +1,7 @@
 # `services/` — les règles métier
 
 Le « chef de cuisine » : c'est ici que sont décidées les règles du projet.
-Les règles propres à un objet sont dans sa classe (`modeles/`) : le service les lui demande
+Les règles propres à un objet sont dans sa classe (`models/`) : le service les lui demande
 (`cours.estAssezLongPourUnQuiz()`, `quiz.estExportable()`…). Les refus prévus lèvent une
 classe fille d'`ErreurMetier` : `new ErreurIntrouvable('Cours introuvable')`, `new ErreurConflit(…)`…
 

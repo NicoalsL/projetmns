@@ -7,11 +7,11 @@ chaque couche a un seul métier :
 navigateur
    │  HTTP (JSON)
    ▼
-app.js ──► routes/ ──► middlewares/ ──► controleurs/ ──► services/ ──► depots/ ──► PostgreSQL (quiz JSONB)
- (assemble)  (adresses)  (contrôles)     (HTTP <-> métier)  (règles)       (requêtes)
-                                                               │
-                                                               ├──► modeles/ (Cours, Quiz, Question, Utilisateur)
-                                                               └──► ia/genererQuiz.js ──► ia/fournisseurs/*
+app.js ──► routes/ ──► middlewares/ ──► controllers/ ──► services/ ──► repositories/ ──► PostgreSQL (quiz JSONB)
+(assemble) (adresses)  (contrôles)      (HTTP ↔ métier)  (règles)      (requêtes)
+                                                         │
+                                                         ├──► models/ (Cours, Quiz, Question, Utilisateur)
+                                                         └──► ai/genererQuiz.js ──► ai/providers/*
 ```
 
 Image : un restaurant. La **route** est la porte d'entrée, le **middleware** est le
@@ -27,12 +27,12 @@ la réserve = la base de données).
 | [`config/`](config/README.md) | Connexion PostgreSQL, schéma SQL, vérification des réglages au démarrage. |
 | [`routes/`](routes/README.md) | Liste des adresses de l'API et ordre des contrôles pour chacune. |
 | [`middlewares/`](middlewares/README.md) | Contrôles avant le contrôleur : jeton, validation des données, limites. |
-| [`controleurs/`](controleurs/README.md) | Traduit HTTP en appel de service, puis le résultat en réponse HTTP. |
+| [`controllers/`](controllers/README.md) | Traduit HTTP en appel de service, puis le résultat en réponse HTTP. |
 | [`services/`](services/README.md) | Orchestration : propriété, appels à l'IA et aux dépôts, erreurs métier. |
-| [`modeles/`](modeles/README.md) | Classes métier alignées sur le MCD : `Cours`, `Quiz`, `Question` (+ 3 types), `Utilisateur`. |
-| [`depots/`](depots/README.md) | Seuls fichiers qui accèdent aux données PostgreSQL. |
-| [`ia/`](ia/README.md) | Consignes envoyées à l'IA, choix du fournisseur, contrôle de la réponse. |
-| [`utilitaires/`](utilitaires/README.md) | Outils partagés : règles d'une question, export CSV et PDF, erreurs. |
+| [`models/`](models/README.md) | Classes métier alignées sur le MCD : `Cours`, `Quiz`, `Question` (+ 3 types), `Utilisateur`. |
+| [`repositories/`](repositories/README.md) | Seuls fichiers qui accèdent aux données PostgreSQL. |
+| [`ai/`](ai/README.md) | Consignes envoyées à l'IA, choix du fournisseur, contrôle de la réponse. |
+| [`utils/`](utils/README.md) | Outils partagés : export CSV et PDF, classes d'erreur, contrôle des entrées. |
 
 ## Les grands choix de sécurité (vue d'ensemble)
 

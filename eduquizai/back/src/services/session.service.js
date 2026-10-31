@@ -1,4 +1,4 @@
-const utilisateurDepot = require('../depots/utilisateur.depot');
+const utilisateurDepot = require('../repositories/utilisateur.depot');
 const { genererJeton } = require('./auth.service');
 
 // Rôle : pouvoir annuler les jetons (révocation) et prolonger une session.

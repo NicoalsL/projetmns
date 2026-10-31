@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import appelApi from '../api/client'
-import EtiquetteTypeQuestion from '../composants/EtiquetteTypeQuestion'
-import { calculerScore, estBonneReponse, messageScore } from '../utilitaires/essaiQuiz'
-import { placerFocus, useFocusTitreApresChargement } from '../utilitaires/focus'
-import { useTitrePage } from '../utilitaires/titrePage'
+import EtiquetteTypeQuestion from '../components/EtiquetteTypeQuestion'
+import { calculerScore, estBonneReponse, messageScore } from '../utils/essaiQuiz'
+import { placerFocus, useFocusTitreApresChargement } from '../utils/focus'
+import { useTitrePage } from '../utils/titrePage'
 
 const LETTRES = 'ABCDEF'
 const APPRECIATIONS_IA = { juste: 'juste', partielle: 'partiellement juste', fausse: 'fausse' }

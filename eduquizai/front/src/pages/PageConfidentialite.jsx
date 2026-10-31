@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useTitrePage } from '../utilitaires/titrePage'
+import { useTitrePage } from '../utils/titrePage'
 
 // Page publique "Mentions légales et politique de confidentialité" (RGPD).
 // Exigée par le REAC (compétence "Développer des interfaces utilisateur" :

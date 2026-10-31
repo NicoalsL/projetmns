@@ -1,6 +1,6 @@
 // Mesure de la durée de génération d'un « quiz simple » (3 questions, une de
 // chaque type) avec le fournisseur Ollama, à travers le vrai code de
-// l'application (ia/genererQuiz.js : consignes, réparation, validation,
+// l'application (ai/genererQuiz.js : consignes, réparation, validation,
 // vérification des citations). Critère du CDC : moins de 5 secondes.
 //
 //   npm run mesure:performance              (10 générations, modèle de .env)
@@ -14,7 +14,7 @@ process.env.IA_FOURNISSEUR = 'ollama';
 // Le script tourne sur la machine hôte, où Ollama écoute sur localhost.
 process.env.OLLAMA_URL = process.env.OLLAMA_URL_MESURE || 'http://localhost:11434';
 
-const { genererQuiz, prechaufferIa } = require('../src/ia/genererQuiz');
+const { genererQuiz, prechaufferIa } = require('../src/ai/genererQuiz');
 
 const OBJECTIF_DUREE_MS = 5000;
 const NOMBRE_GENERATIONS_PAR_DEFAUT = 10;

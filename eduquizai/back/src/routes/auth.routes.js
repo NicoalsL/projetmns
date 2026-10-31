@@ -1,5 +1,5 @@
 const express = require('express');
-const authControleur = require('../controleurs/auth.controleur');
+const authControleur = require('../controllers/auth.controleur');
 const { validerInscription, validerConnexion } = require('../middlewares/validation');
 const { verifierTentativesCompte } = require('../middlewares/limitationCompteConnexion');
 

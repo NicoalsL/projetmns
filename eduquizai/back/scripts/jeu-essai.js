@@ -10,7 +10,7 @@
 
 const bcrypt = require('bcryptjs');
 const pool = require('../src/config/postgres');
-const quizDepot = require('../src/depots/quiz.depot');
+const quizDepot = require('../src/repositories/quiz.depot');
 
 const DOMAINE_DEMO = '@demo.eduquizai.test';
 const MOT_DE_PASSE_DEMO = 'Demo-EduQuizAI-2026';

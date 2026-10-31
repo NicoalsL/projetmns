@@ -5,7 +5,7 @@
 jest.mock('../src/config/postgres', () => ({ query: jest.fn() }));
 
 const pool = require('../src/config/postgres');
-const generationIaDepot = require('../src/depots/generationIa.depot');
+const generationIaDepot = require('../src/repositories/generationIa.depot');
 
 beforeEach(() => pool.query.mockReset());
 

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import appelApi from '../api/client'
-import SectionQuizCours from '../composants/SectionQuizCours'
-import TexteCours from '../composants/TexteCours'
-import { placerFocus, useFocusTitreApresChargement } from '../utilitaires/focus'
-import { useTitrePage } from '../utilitaires/titrePage'
+import SectionQuizCours from '../components/SectionQuizCours'
+import TexteCours from '../components/TexteCours'
+import { placerFocus, useFocusTitreApresChargement } from '../utils/focus'
+import { useTitrePage } from '../utils/titrePage'
 
 // Page /cours/:id : affiche un cours et permet de le supprimer.
 // La "key" force React à recréer entièrement le composant quand l'identifiant

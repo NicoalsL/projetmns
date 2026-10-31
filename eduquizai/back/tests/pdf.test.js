@@ -1,7 +1,7 @@
-// Tests de l'export PDF d'un quiz (utilitaires/pdf.js) : document valide et
+// Tests de l'export PDF d'un quiz (utils/pdf.js) : document valide et
 // caractères hors du jeu de la police Helvetica remplacés proprement.
 
-const { quizEnPdf, texteCompatible } = require('../src/utilitaires/pdf');
+const { quizEnPdf, texteCompatible } = require('../src/utils/pdf');
 
 const quizExporte = {
   titre: 'Quiz – Biologie',
