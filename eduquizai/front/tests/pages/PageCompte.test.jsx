@@ -103,5 +103,37 @@ describe('PageCompte', () => {
 
     expect(screen.queryByLabelText('Mot de passe (confirmation)')).toBeNull()
     expect(appelApi).toHaveBeenCalledTimes(1)
+    // Le focus revient sur le bouton d'ouverture : l'utilisateur au clavier ne perd pas sa place.
+    expect(document.activeElement.textContent).toBe('Supprimer mon compte et mes données')
+  })
+
+  test('mot de passe incorrect : le champ est marqué en erreur et relié au message', async () => {
+    appelApi.mockResolvedValueOnce(PROFIL).mockRejectedValueOnce(new Error('Mot de passe incorrect'))
+    afficherPage()
+    await screen.findByText('Camille Martin')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Supprimer mon compte et mes données' }))
+    await userEvent.type(screen.getByLabelText('Mot de passe (confirmation)'), 'Mauvais-123456')
+    await userEvent.click(screen.getByRole('button', { name: 'Supprimer définitivement' }))
+
+    const champ = screen.getByLabelText('Mot de passe (confirmation)')
+    const message = await screen.findByRole('alert')
+    expect(message.textContent).toBe('Mot de passe incorrect')
+    expect(champ.getAttribute('aria-invalid')).toBe('true')
+    expect(champ.getAttribute('aria-describedby')).toBe(message.id)
+    expect(sessionValide()).toBe(true)
+  })
+
+  test('panne du serveur : message affiché, sans marquer le mot de passe en erreur', async () => {
+    appelApi.mockResolvedValueOnce(PROFIL).mockRejectedValueOnce(new Error('Impossible de joindre le serveur.'))
+    afficherPage()
+    await screen.findByText('Camille Martin')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Supprimer mon compte et mes données' }))
+    await userEvent.type(screen.getByLabelText('Mot de passe (confirmation)'), 'MotDePasse-123')
+    await userEvent.click(screen.getByRole('button', { name: 'Supprimer définitivement' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Impossible de joindre le serveur.')
+    expect(screen.getByLabelText('Mot de passe (confirmation)').getAttribute('aria-invalid')).toBeNull()
   })
 })

@@ -2,7 +2,10 @@ import { startTransition, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import appelApi from '../api/client'
 import { fermerSession } from '../auth/session'
+import { attributsErreur } from '../utils/champsFormulaire'
 import { placerFocus } from '../utils/focus'
+
+const ID_ERREUR = 'erreur-suppression'
 
 // Zone « Supprimer mon compte » de la page Mon compte (PageCompte) : droit à
 // l'effacement (RGPD).
@@ -13,13 +16,21 @@ function SectionCompte() {
   const [motDePasse, setMotDePasse] = useState('')
   const [erreur, setErreur] = useState('')
   const [suppressionEnCours, setSuppressionEnCours] = useState(false)
+  // Vrai après « Annuler » : le bouton d'ouverture, de nouveau affiché,
+  // reprend le focus (sinon, le bouton cliqué ayant disparu, le focus
+  // retombait en haut de la page et l'utilisateur au clavier perdait sa place).
+  const [retourFocus, setRetourFocus] = useState(false)
   const verrouSuppression = useRef(false)
   const navigue = useNavigate()
+  // ACCESSIBILITÉ (RGAA 11.10) — Le champ n'est marqué en erreur que si le
+  // message le concerne (« Mot de passe incorrect »), pas pour une panne du serveur.
+  const motDePasseEnErreur = /mot de passe/i.test(erreur)
 
   function annuler() {
     setFormulaireAffiche(false)
     setMotDePasse('')
     setErreur('')
+    setRetourFocus(true)
   }
 
   async function supprimer(evenement) {
@@ -55,7 +66,12 @@ function SectionCompte() {
       <h2 id="titre-suppression">Supprimer mon compte</h2>
 
       {!formulaireAffiche && (
-        <button type="button" className="bouton-danger" onClick={() => setFormulaireAffiche(true)}>
+        <button
+          type="button"
+          className="bouton-danger"
+          ref={retourFocus ? placerFocus : undefined}
+          onClick={() => setFormulaireAffiche(true)}
+        >
           Supprimer mon compte et mes données
         </button>
       )}
@@ -75,10 +91,12 @@ function SectionCompte() {
             required
             value={motDePasse}
             onChange={(e) => setMotDePasse(e.target.value)}
+            {...attributsErreur(motDePasseEnErreur, ID_ERREUR)}
           />
           {erreur && (
             <p
               key={erreur}
+              id={ID_ERREUR}
               role="alert"
               className="erreur"
               tabIndex={-1}

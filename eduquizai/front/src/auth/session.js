@@ -71,14 +71,35 @@ export async function chargerSession() {
   sequence += 1
   const requete = sequence
 
+  // Seul un refus explicite du serveur (401 : session absente, expirée ou
+  // révoquée) ferme la session. Une panne (réseau coupé, erreur 500, 503…) ne
+  // dit rien de la session : on garde l'état connu, dont l'expiration reste
+  // programmée. Sinon, un simple raté du serveur renvoyait l'enseignant à la
+  // connexion et lui faisait perdre sa saisie en cours.
+  let reponse
   try {
-    const reponse = await fetch(URL_BASE + '/api/compte/session', {
+    reponse = await fetch(URL_BASE + '/api/compte/session', {
       credentials: 'same-origin',
       cache: 'no-store',
     })
-    if (!reponse.ok) {
-      throw new Error('Session indisponible')
+  } catch {
+    return etat // réseau indisponible : état inchangé
+  }
+
+  if (reponse.status === 401) {
+    if (requete === sequence) {
+      etat = null
+      programmerExpiration()
+      notifier()
     }
+    return etat
+  }
+
+  if (!reponse.ok) {
+    return etat // erreur du serveur : état inchangé
+  }
+
+  try {
     const donnees = await reponse.json()
     if (requete === sequence) {
       etat = donnees
@@ -86,11 +107,7 @@ export async function chargerSession() {
       notifier()
     }
   } catch {
-    if (requete === sequence) {
-      etat = null
-      programmerExpiration()
-      notifier()
-    }
+    // Réponse illisible (ex. page d'erreur d'un proxy) : comme une panne, état inchangé.
   }
   return etat
 }

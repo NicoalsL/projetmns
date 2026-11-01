@@ -13,6 +13,7 @@
     "test:reel": "node --env-file-if-exists=.env scripts/verifier-cours-reel.js",
     "test:reel:quiz": "node --env-file-if-exists=.env scripts/verifier-quiz-reel.js",
     "test:reel:csrf": "node scripts/verifier-cookie-csrf-reel.js",
+    "test:reel:suppression": "node --env-file-if-exists=.env scripts/verifier-suppression-compte-reel.js",
     "test:reel:openai": "node --env-file-if-exists=.env scripts/verifier-openai-reel.js",
     "test:postman": "npx --yes newman@6 run postman/eduquizai.postman_collection.json -e postman/local.postman_environment.json",
     "mesure:performance": "node --env-file-if-exists=.env scripts/mesurer-performance.js",

@@ -64,6 +64,11 @@ function PageCompte() {
           Vos cours et vos quiz ne sont visibles que par vous. Vous pouvez exporter un quiz validé
           depuis sa page (JSON, CSV ou PDF) avant de supprimer votre compte.
         </p>
+        {/* RGPD — Droit de rectification (art. 16) : pas encore de formulaire de modification,
+            la demande passe par l'adresse de contact de la politique de confidentialité */}
+        <p>
+          Pour corriger votre nom ou votre adresse email, écrivez à contact-rgpd@schoolup.example.
+        </p>
         <p>
           <Link to="/confidentialite">Politique de confidentialité et vos droits</Link>
         </p>

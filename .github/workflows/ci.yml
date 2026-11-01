@@ -76,6 +76,10 @@ jobs:
         working-directory: eduquizai/back
       - run: npm run test:reel:quiz
         working-directory: eduquizai/back
+      # RGPD — Droit à l'effacement prouvé sur la vraie base : supprimer un compte
+      # efface ses cours, quiz et générations, sans toucher aux autres comptes.
+      - run: npm run test:reel:suppression
+        working-directory: eduquizai/back
       # Collection Postman (outil de test recommandé par le CDC) exécutée par
       # Newman sur l'API démarrée : parcours enseignant et contrôles de sécurité.
       - run: npm run test:postman
