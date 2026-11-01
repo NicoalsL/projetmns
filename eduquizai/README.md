@@ -134,9 +134,10 @@ Pour tester sur la vraie stack Docker :
 ~~~sh
 docker compose exec -T back npm run test:reel
 docker compose exec -T back npm run test:reel:quiz
+docker compose exec -T back npm run test:reel:suppression
 ~~~
 
-À lancer depuis eduquizai. Le script crée deux comptes synthétiques uniques, vérifie 19 résultats sur l'API et PostgreSQL, puis nettoie uniquement ses comptes et cours, même en cas d'échec. Il vérifie notamment une reconnexion, un texte de plus de 16 ko et le refus des accès entre comptes. Le second script vérifie 24 résultats sur le cycle complet d'un quiz (génération, journal SQL, ligne PostgreSQL avec questions JSONB, isolation, export refusé puis autorisé, modification, suppression en cascade).
+À lancer depuis eduquizai. Le script crée deux comptes synthétiques uniques, vérifie 19 résultats sur l'API et PostgreSQL, puis nettoie uniquement ses comptes et cours, même en cas d'échec. Il vérifie notamment une reconnexion, un texte de plus de 16 ko et le refus des accès entre comptes. Le second script vérifie 24 résultats sur le cycle complet d'un quiz (génération, journal SQL, ligne PostgreSQL avec questions JSONB, isolation, export refusé puis autorisé, modification, suppression en cascade). Le troisième prouve le droit à l'effacement (RGPD) : un compte avec deux cours, un quiz et sa génération est supprimé par l'API, puis la base est vérifiée table par table (13 vérifications, compte témoin intact, ancien jeton refusé).
 
 Depuis front (fonctions sans React avec le lanceur de Node, puis composants React avec Vitest et jsdom) :
 
